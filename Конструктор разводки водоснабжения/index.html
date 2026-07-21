@@ -1957,6 +1957,19 @@ function cmFromEvent(evt){
   const py = (evt.clientY - rect.top) * scaleY;
   return {x: px/PX, y: py/PX};
 }
+// Same point, snapped to the 5cm grid when "Сетка 5 см" is on — used for
+// placing a NEW route bend. Dragging an existing component/waypoint already
+// snapped correctly; a freshly clicked bend point didn't, so a route meant to
+// run dead straight would land a fraction of a cm off on whichever click
+// wasn't pixel-perfect and read as the whole line quietly drifting.
+function snappedCmFromEvent(evt){
+  const cm = cmFromEvent(evt);
+  if(document.getElementById("snapChk").checked){
+    cm.x = Math.round(cm.x/5)*5;
+    cm.y = Math.round(cm.y/5)*5;
+  }
+  return cm;
+}
 
 stage.addEventListener("pointerdown", (evt)=>{
   // The stage itself is a real focusable element (tabindex="0") specifically so
@@ -1980,7 +1993,7 @@ stage.addEventListener("pointerdown", (evt)=>{
   if(!target){
     if(pending){
       // empty wall / grid clicked mid-route: drop a turn and keep tracing
-      pending.waypoints.push(cmFromEvent(evt));
+      pending.waypoints.push(snappedCmFromEvent(evt));
       render();
       return;
     }
@@ -2090,7 +2103,10 @@ stage.addEventListener("pointermove", (evt)=>{
   }
 
   if(pending){
-    pendingMouseCm = cmFromEvent(evt);
+    // Snapped the same way the click that commits it will be, so the
+    // rubber-band preview shows exactly where the bend will actually land —
+    // no surprise jump between what's previewed and what gets placed.
+    pendingMouseCm = snappedCmFromEvent(evt);
     scheduleRender();
   }
 });
