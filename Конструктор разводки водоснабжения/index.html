@@ -1263,11 +1263,14 @@ function escapeAttr(s){ return String(s).replace(/"/g,"&quot;"); }
 function getPorts(c){ return CATALOG[c.type].ports(c); }
 function getFootprint(c){
   const fp = c.type==="manifold" ? CATALOG.manifold.footprint(c) : CATALOG[c.type].footprint(c);
+  const s = c.scale || 1;
+  const scaled = {w: fp.w*s, h: fp.h*s};
   const rot = ((c.rot%360)+360)%360;
-  return (rot===90||rot===270) ? {w:fp.h, h:fp.w} : fp;
+  return (rot===90||rot===270) ? {w:scaled.h, h:scaled.w} : scaled;
 }
 function portWorldCm(c, port){
-  const [rdx, rdy] = rotatePt(port.dx, port.dy, c.rot||0);
+  const s = c.scale || 1;
+  const [rdx, rdy] = rotatePt(port.dx*s, port.dy*s, c.rot||0);
   return {x: c.x + rdx, y: c.y + rdy};
 }
 function findComp(id){ return components.find(c=>c.id===id); }
@@ -1634,7 +1637,7 @@ function renderStageOnly(){
   // components layer — bodies first, in a plain single pass...
   components.forEach(c=>{
     const def = CATALOG[c.type];
-    const g = el("g", {transform:`translate(${c.x*PX},${c.y*PX}) rotate(${c.rot||0})`, class:"comp-hit"});
+    const g = el("g", {transform:`translate(${c.x*PX},${c.y*PX}) rotate(${c.rot||0}) scale(${c.scale||1})`, class:"comp-hit"});
     g.dataset.kind="comp"; g.dataset.id=c.id;
     drawRot = c.rot||0;
     def.draw(c, g);
@@ -1785,6 +1788,39 @@ function renderInspector(){
       else if(mode===false) renderInspector();
       else render();
     }));
+  }
+
+  // A generic size control for every catalog item — consumers already carry
+  // their own real-world width/depth (they need actual cm to compare against
+  // a room), but plain equipment/arматура has no such notion, so a simple
+  // visual multiplier is what "make it bigger so it reads clearly" means for
+  // a valve, a manifold, a heater. Purely cosmetic: scales the drawn glyph and
+  // its footprint together, ports move with it, but it never changes what the
+  // part actually is or does.
+  if(c.type!=="consumer"){
+    const sizeWrap = document.createElement("div");
+    const pct = Math.round((c.scale||1)*100);
+    sizeWrap.innerHTML = `
+      <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:${def.inspector?10:0}px;">
+        <label>Размер на схеме</label>
+        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+          <input type="range" id="fScale" min="50" max="300" step="10" value="${pct}" style="flex:1;">
+          <output id="fScaleOut" style="font-family:var(--font-mono);font-size:12px;width:40px;text-align:right;flex:none;">${pct}%</output>
+        </div>
+      </div>
+      <p class="pal-hint">Только для наглядности — на подключение труб и параметры детали не влияет.</p>
+    `;
+    content.appendChild(sizeWrap);
+    const scaleInput = sizeWrap.querySelector("#fScale");
+    const scaleOut = sizeWrap.querySelector("#fScaleOut");
+    let scaleSnapshotted = false;
+    scaleInput.oninput = (e)=>{
+      if(!scaleSnapshotted){ snapshot(); scaleSnapshotted = true; }
+      c.scale = (+e.target.value)/100;
+      scaleOut.textContent = e.target.value + "%";
+      renderStageOnly();
+    };
+    scaleInput.onchange = ()=>{ scaleSnapshotted = false; };
   }
 
   const actions = document.createElement("div");
