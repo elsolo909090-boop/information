@@ -248,7 +248,7 @@
     overflow:auto;
     background:var(--canvas-bg);
   }
-  .canvas-wrap svg#stage{display:block;cursor:default;}
+  .canvas-wrap svg#stage{display:block;cursor:default;outline:none;}
   .wall-plate{fill:var(--canvas-bg);}
   .dot{fill:var(--canvas-dot);}
 
@@ -502,7 +502,7 @@
     <div class="palette" id="palette"></div>
 
     <div class="canvas-wrap" id="canvasWrap">
-      <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
+      <svg id="stage" tabindex="0" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
 
     <div class="inspector" id="inspector">
@@ -874,7 +874,7 @@ const CATALOG = {
     label: "Косой фильтр",
     group: "Арматура",
     footprint:()=>({w:6,h:5}),
-    create(){ return {type:"strainer", rot:0}; },
+    create(){ return {type:"strainer", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-3*PX,0,-1.2*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
@@ -884,14 +884,15 @@ const CATALOG = {
       g.appendChild(el("path",{d:`M ${-1.3*PX} ${0.6*PX} L ${0.4*PX} ${3.4*PX} L ${1.9*PX} ${1.6*PX}`, fill:"var(--panel-line)", stroke:"var(--ink)", "stroke-width":1.1, "stroke-linejoin":"round"}));
       for(let i=-1;i<=1;i++) g.appendChild(line(-1.5*PX,i*0.8*PX, 1.5*PX, i*0.8*PX, {stroke:"var(--ink)","stroke-width":.7,opacity:.55}));
       g.appendChild(text(0, -3.4*PX, "фильтр", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   valve: {
     label: "Запорный кран",
     group: "Арматура",
     footprint:()=>({w:6,h:4}),
-    create(){ return {type:"valve", rot:0}; },
+    create(){ return {type:"valve", rot:0, size:"1/2", threads:["ВР","НР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
@@ -899,14 +900,15 @@ const CATALOG = {
       g.appendChild(el("path",{d:`M ${-1.4*PX} ${-1.3*PX} L ${1.4*PX} ${1.3*PX} L ${1.4*PX} ${-1.3*PX} L ${-1.4*PX} ${1.3*PX} Z`, fill:"var(--ok)", stroke:"var(--ink)","stroke-width":1}));
       g.appendChild(line(0,-2.2*PX,0,2.2*PX,{stroke:"var(--ink)","stroke-width":2.6, "stroke-linecap":"round"}));
       g.appendChild(text(0, -3.6*PX, "кран", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   meter: {
     label: "Счётчик воды",
     group: "Арматура",
     footprint:()=>({w:6,h:5}),
-    create(){ return {type:"meter", rot:0}; },
+    create(){ return {type:"meter", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-3*PX,0,-1.9*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
@@ -917,27 +919,29 @@ const CATALOG = {
       g.appendChild(line(0,0, 0.9*PX, -0.6*PX, {stroke:"var(--copper-deep)","stroke-width":1.2, "stroke-linecap":"round"}));
       g.appendChild(circle(0,0,.4*PX,{fill:"var(--copper-deep)"}));
       g.appendChild(text(0, 3.8*PX, "счётчик", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   plug: {
     label: "Заглушка",
     group: "Арматура",
     footprint:()=>({w:3,h:3}),
-    create(){ return {type:"plug", rot:0}; },
+    create(){ return {type:"plug", rot:0, size:"1/2", threads:["НР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-1.5,dy:0,dir:"in",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-1.5*PX,0,-0.3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
       g.appendChild(rect(-0.3*PX,-1.6*PX,1.7*PX,3.2*PX,{fill:"var(--ink)",rx:1}));
       g.appendChild(text(0, -3*PX, "заглушка", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Резьба"]); }
   },
 
   finefilter: {
     label: "Фильтр тонкой очистки",
     group: "Арматура",
     footprint:()=>({w:6,h:9}),
-    create(){ return {type:"finefilter", rot:0}; },
+    create(){ return {type:"finefilter", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-3,dy:-3,dir:"in",medium:null}, {id:"out",dx:3,dy:-3,dir:"out",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-3*PX,-3*PX,-1.6*PX,-3*PX,{stroke:"var(--ink-soft)","stroke-width":2.2}));
@@ -946,7 +950,8 @@ const CATALOG = {
       g.appendChild(el("path",{d:`M ${-1.5*PX} ${-2.2*PX} L ${-1.7*PX} ${3.6*PX} Q 0 ${4.6*PX} ${1.7*PX} ${3.6*PX} L ${1.5*PX} ${-2.2*PX} Z`, fill:"var(--cold-soft)", stroke:"var(--ink)","stroke-width":1.2}));
       for(let i=0;i<3;i++) g.appendChild(line(-1.2*PX, (-1+i*1.6)*PX, 1.2*PX, (-1+i*1.6)*PX, {stroke:"var(--ink)","stroke-width":.7,opacity:.5}));
       g.appendChild(text(0, -5*PX, "тонкая очистка", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   heater: {
@@ -970,7 +975,7 @@ const CATALOG = {
     label: "Кран с защитой от протечек",
     group: "Арматура",
     footprint:()=>({w:6,h:5}),
-    create(){ return {type:"leakvalve", rot:0}; },
+    create(){ return {type:"leakvalve", rot:0, size:"1/2", threads:["ВР","НР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
@@ -981,14 +986,15 @@ const CATALOG = {
       g.appendChild(circle(0, -3.6*PX, 1.7*PX, {fill:"var(--paper)", stroke:"var(--ok)", "stroke-width":1.1}));
       g.appendChild(el("path",{d:`M 0 ${-4.3*PX} q ${0.9*PX} ${1.1*PX} 0 ${1.9*PX} q ${-0.9*PX} ${-0.8*PX} 0 ${-1.9*PX} Z`, fill:"var(--ok)"}));
       g.appendChild(text(0, 3.6*PX, "аварийный кран", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   hammer: {
     label: "Датчик гидроудара",
     group: "Арматура",
     footprint:()=>({w:6,h:8}),
-    create(){ return {type:"hammer", rot:0}; },
+    create(){ return {type:"hammer", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-3,dy:2,dir:"in",medium:null}, {id:"out",dx:3,dy:2,dir:"out",medium:null} ]; },
     draw(c,g){
       const lineY = 2*PX;
@@ -997,14 +1003,15 @@ const CATALOG = {
       g.appendChild(rect(-1*PX,-3.6*PX,2*PX,3.2*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.2, rx:5}));
       g.appendChild(el("path",{d:`M ${-0.4*PX} ${-3.1*PX} L ${0.3*PX} ${-1.9*PX} L ${-0.2*PX} ${-1.9*PX} L ${0.4*PX} ${-0.6*PX}`, fill:"none", stroke:"var(--copper-deep)","stroke-width":1, "stroke-linejoin":"round","stroke-linecap":"round"}));
       g.appendChild(text(0, 4.4*PX, "гидроудар", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   tee: {
     label: "Тройник",
     group: "Соединения",
     footprint:()=>({w:6,h:6}),
-    create(){ return {type:"tee", rot:0}; },
+    create(){ return {type:"tee", rot:0, size:"1/2", threads:["ВР","ВР","ВР"], threadsFixed:false}; },
     ports(){ return [
       {id:"in",dx:-3,dy:0,dir:"in",medium:null},
       {id:"out1",dx:3,dy:0,dir:"out",medium:null},
@@ -1015,14 +1022,15 @@ const CATALOG = {
       g.appendChild(line(0,0,0,3*PX,{stroke:"var(--ink-soft)","stroke-width":3}));
       g.appendChild(circle(0,0,1.5*PX,{fill:"var(--ink-soft)",stroke:"var(--ink)","stroke-width":1}));
       g.appendChild(text(0, -2.6*PX, "тройник", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход 1","Выход 2"]); }
   },
 
   elbow: {
     label: "Отвод (угол 90°)",
     group: "Соединения",
     footprint:()=>({w:6,h:6}),
-    create(){ return {type:"elbow", rot:0}; },
+    create(){ return {type:"elbow", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
     ports(){ return [
       {id:"in",dx:-3,dy:0,dir:"in",medium:null},
       {id:"out",dx:0,dy:3,dir:"out",medium:null},
@@ -1033,14 +1041,15 @@ const CATALOG = {
       g.appendChild(el("path",{d:`M ${-1.4*PX} 0 Q 0 0 0 ${1.4*PX}`, fill:"none", stroke:"var(--ink-soft)","stroke-width":3, "stroke-linecap":"round"}));
       g.appendChild(circle(0,0,1.1*PX,{fill:"var(--ink-soft)",stroke:"var(--ink)","stroke-width":1}));
       g.appendChild(text(0, -2.6*PX, "отвод", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   union: {
     label: "Сгон",
     group: "Арматура",
     footprint:()=>({w:6,h:4}),
-    create(){ return {type:"union", rot:0}; },
+    create(){ return {type:"union", rot:0, size:"1/2", threads:["НР","НР"], threadsFixed:false}; },
     ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-3*PX,0,-1*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
@@ -1049,7 +1058,8 @@ const CATALOG = {
       g.appendChild(line(-0.35*PX,-1.7*PX,-0.35*PX,1.7*PX,{stroke:"var(--copper-deep)","stroke-width":1}));
       g.appendChild(line(0.35*PX,-1.7*PX,0.35*PX,1.7*PX,{stroke:"var(--copper-deep)","stroke-width":1}));
       g.appendChild(text(0, -2.9*PX, "сгон", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
   },
 
   connector: {
@@ -1949,16 +1959,22 @@ function cmFromEvent(evt){
 }
 
 stage.addEventListener("pointerdown", (evt)=>{
-  // A form control in the inspector (the size slider, a diameter <select>, a
-  // stepper button…) keeps keyboard focus after you're done with it — clicking
-  // an SVG shape doesn't blur it the way clicking plain page background would.
-  // Left stuck there, it silently swallows every keyboard shortcut afterward
-  // (Ctrl+Z/C/V, Delete, R, Space all defer to a focused field so native
-  // text-editing isn't hijacked). Reclaim focus the moment the user is back
-  // working on the canvas, so shortcuts never go dead after touching a widget.
-  if(document.activeElement && document.activeElement !== document.body && document.activeElement.blur){
-    document.activeElement.blur();
-  }
+  // The stage itself is a real focusable element (tabindex="0") specifically so
+  // this can claim keyboard focus outright on every click, rather than merely
+  // blurring whatever had it. Two problems this fixes at once: (1) a form
+  // control in the inspector (size slider, a <select>, a stepper button…) keeps
+  // focus after you're done with it — clicking an SVG shape doesn't blur it the
+  // way clicking plain page background would, and left stuck there it silently
+  // swallows every shortcut afterward; (2) when this page is embedded in an
+  // iframe, keydown only reaches this document's listeners while THIS frame
+  // holds the browser's overall input focus — an explicit .focus() call on a
+  // genuine element inside it is what actually hands focus to the frame, not
+  // just blurring something. preventDefault() first because the browser's OWN
+  // default mousedown focus-handling runs AFTER this handler and would
+  // otherwise silently revert focus back to <body> right behind our back —
+  // this is what makes an explicit .focus() call here actually stick.
+  evt.preventDefault();
+  try{ stage.focus({preventScroll:true}); }catch(err){ stage.focus(); }
   const target = evt.target.closest("[data-kind]");
 
   if(!target){
@@ -2314,13 +2330,14 @@ function fittingDiameterLabel(c){
   return [...dias].sort((a,b)=>a-b).map(diameterLabelFull).join(" / ");
 }
 
-// Threaded fittings (nipples, couplings, check valves, reducers…) are sized by
-// their own nominal thread — not by whatever flexible pipe happens to be routed
-// to their ports — so their spec name comes from threadedName() instead of
-// fittingDiameterLabel(). Соединители are the odd one out: they carry BOTH a
-// threaded end and a pipe-clamp end, so they get their own thread label AND,
-// same as any other fitting, the attached pipe's diameter.
-const THREADED_FIXED_TYPES = new Set(["checkvalve","reducer","nipple","coupling","barrel"]);
+// Threaded fittings (nipples, couplings, check valves, reducers, tees,
+// elbows, valves…) are sized by their own nominal thread — not by whatever
+// flexible pipe happens to be routed to their ports — so their spec name
+// comes from threadedName() instead of fittingDiameterLabel(). Соединители
+// are the odd one out: they carry BOTH a threaded end and a pipe-clamp end,
+// so they get their own thread label AND, same as any other fitting, the
+// attached pipe's diameter.
+const THREADED_NAME_TYPES = new Set(["checkvalve","reducer","nipple","coupling","barrel","tee","elbow","valve","strainer","meter","plug","finefilter","leakvalve","hammer","union"]);
 const CONNECTOR_TYPES = new Set(["connector","connector_angle"]);
 
 // The same "what is this thing called" logic the spec's equipment table uses,
@@ -2331,14 +2348,14 @@ function equipmentDisplayName(c){
   if(c.type==="manifold") name = `${c.label} (${c.count} отв.)`;
   else if(c.type==="source") name = c.medium==="hot" ? "Ввод ГВС (от стояка)" : "Ввод ХВС (от стояка)";
   else if(c.type==="consumer") name = `Потребитель — ${CATALOG.consumer.displayText(c)}`;
-  else if(THREADED_FIXED_TYPES.has(c.type)) name = threadedName(c);
+  else if(THREADED_NAME_TYPES.has(c.type)) name = threadedName(c);
   else if(CONNECTOR_TYPES.has(c.type)) name = `${CATALOG[c.type].label} - ${threadSizeLabel(c.size)} ${c.thread}`;
   else name = CATALOG[c.type].label;
   // Everything except the threaded-fixed group also gets whatever's actually
   // threaded onto its ports appended — a manifold with outlets in more than
   // one bore lists every size present, right alongside its outlet count; a
   // соединитель gets the pipe-clamp side's diameter next to its own thread.
-  if(!THREADED_FIXED_TYPES.has(c.type)){
+  if(!THREADED_NAME_TYPES.has(c.type)){
     const size = fittingDiameterLabel(c);
     if(size) name += ` — ${size}`;
   }
