@@ -447,6 +447,7 @@
 </head>
 <body>
 
+
 <div class="app">
   <div class="topbar">
     <div class="brand">
@@ -1493,9 +1494,34 @@ function spliceIntoPipe(pipe, type){
   const sideAPort = pa.dir==="out" ? "in" : outPortId;
   const sideBPort = pa.dir==="out" ? outPortId : "in";
 
+  const portA = findPort(newComp.id, sideAPort);
+  const portB = findPort(newComp.id, sideBPort);
+  const wPortA = portA ? portWorldCm(newComp, portA) : {x:newComp.x, y:newComp.y};
+  const wPortB = portB ? portWorldCm(newComp, portB) : {x:newComp.x, y:newComp.y};
+
+  // Bend the leg right before the new fitting's port so the final approach
+  // runs along its own axis (horizontal/vertical per split.horizontal) instead
+  // of continuing at the original segment's raw angle — otherwise a fitting
+  // spliced into a diagonal run looks laid on top of the pipe instead of embedded.
+  function alignApproach(waypoints, endPoint, farPoint, prepend){
+    const origin = waypoints.length ? (prepend ? waypoints[0] : waypoints[waypoints.length-1]) : farPoint;
+    const EPS = 0.01;
+    let bend;
+    if(split.horizontal){
+      if(Math.abs(origin.y - endPoint.y) < EPS) return waypoints;
+      bend = {x: origin.x, y: endPoint.y};
+    } else {
+      if(Math.abs(origin.x - endPoint.x) < EPS) return waypoints;
+      bend = {x: endPoint.x, y: origin.y};
+    }
+    return prepend ? [bend, ...waypoints] : [...waypoints, bend];
+  }
+  const beforeAligned = alignApproach(before, wPortA, wa, false);
+  const afterAligned = alignApproach(after, wPortB, wb, true);
+
   pipes = pipes.filter(p=>p.id!==pipe.id);
-  pipes.push({ id: nextId(), a:{compId:pipe.a.compId, portId:pipe.a.portId}, b:{compId:newComp.id, portId:sideAPort}, waypoints: before, diameter: pipe.diameter });
-  pipes.push({ id: nextId(), a:{compId:newComp.id, portId:sideBPort}, b:{compId:pipe.b.compId, portId:pipe.b.portId}, waypoints: after, diameter: pipe.diameter });
+  pipes.push({ id: nextId(), a:{compId:pipe.a.compId, portId:pipe.a.portId}, b:{compId:newComp.id, portId:sideAPort}, waypoints: beforeAligned, diameter: pipe.diameter });
+  pipes.push({ id: nextId(), a:{compId:newComp.id, portId:sideBPort}, b:{compId:pipe.b.compId, portId:pipe.b.portId}, waypoints: afterAligned, diameter: pipe.diameter });
 
   selection = {kind:"comp", id:newComp.id};
 }
@@ -2104,6 +2130,12 @@ stage.addEventListener("pointermove", (evt)=>{
     const snap = document.getElementById("snapChk").checked;
     if(snap){ nx = Math.round(nx/5)*5; ny = Math.round(ny/5)*5; }
     nx = Math.max(8, nx); ny = Math.max(8, ny);
+    // "Magnetize" onto a compatible threaded neighbor placed nearby — pulls the
+    // dragged part's position into an exact butt-join alignment so releasing the
+    // mouse there hands off to tryConnect with the ports already touching.
+    const snapTarget = findSnapTarget(c, nx, ny);
+    if(snapTarget){ nx += snapTarget.dx; ny += snapTarget.dy; }
+    drag.snapTarget = snapTarget;
     if(Math.abs(nx-c.x) > 0.01 || Math.abs(ny-c.y) > 0.01){
       if(!drag.moved) snapshot(); // one snapshot for the whole drag, taken at its first actual movement
       drag.moved = true;
@@ -2150,7 +2182,13 @@ stage.addEventListener("pointermove", (evt)=>{
 });
 
 stage.addEventListener("pointerup", (evt)=>{
-  if(drag){ drag=null; }
+  if(drag){
+    if(drag.snapTarget){
+      tryConnect({compId: drag.id, portId: drag.snapTarget.ownPortId}, {compId: drag.snapTarget.otherCompId, portId: drag.snapTarget.otherPortId});
+      render();
+    }
+    drag=null;
+  }
   if(pipeDragCandidate && !pipeDragCandidate.moved){
     // never turned into a drag — treat it as the plain "select this pipe" click
     selection = {kind:"pipe", id: pipeDragCandidate.pipeId};
@@ -2258,6 +2296,45 @@ function threadsMateDirectly(tA, tB){
 // a tight threshold would make the feature work only sometimes for the exact
 // same "clearly adjacent" placement.
 const DIRECT_JOIN_MAX_DIST_CM = 8;
+// Wider than the direct-join distance itself — this is the "how close do you
+// have to drag it before it magnetizes" radius, not the "is it close enough to
+// actually screw together" one. Dragging manually to within a millimetre of a
+// perfect butt-join is unrealistic; this catches "clearly meant to dock these
+// two" and then *makes* the fit exact by nudging the dragged part into place.
+const MAGNET_SNAP_RADIUS_CM = 15;
+
+// While dragging component `c` toward candidate position (nx,ny), look for an
+// unconnected port on some OTHER component whose thread is compatible with one
+// of `c`'s own unconnected ports and within snapping range. Returns the delta
+// to shift (nx,ny) by so the two ports land exactly on top of each other
+// (ready for tryConnect to turn into a direct joint on release), or null.
+function findSnapTarget(c, nx, ny){
+  let best = null, bestDist = MAGNET_SNAP_RADIUS_CM;
+  getPorts(c).forEach(ownPort=>{
+    if(pipeConnectedTo(c.id, ownPort.id)) return;
+    const tiOwn = portThreadInfo(c.id, ownPort.id);
+    if(!tiOwn) return;
+    const s = c.scale || 1;
+    const [rdx, rdy] = rotatePt(ownPort.dx*s, ownPort.dy*s, c.rot||0);
+    const trial = {x: nx+rdx, y: ny+rdy};
+    components.forEach(other=>{
+      if(other.id===c.id) return;
+      getPorts(other).forEach(otherPort=>{
+        if(ownPort.dir===otherPort.dir) return;
+        if(pipeConnectedTo(other.id, otherPort.id)) return;
+        const tiOther = portThreadInfo(other.id, otherPort.id);
+        if(!threadsMateDirectly(tiOwn, tiOther)) return;
+        const wOther = portWorldCm(other, otherPort);
+        const dist = Math.hypot(wOther.x-trial.x, wOther.y-trial.y);
+        if(dist < bestDist){
+          bestDist = dist;
+          best = { ownPortId: ownPort.id, otherCompId: other.id, otherPortId: otherPort.id, dx: wOther.x-trial.x, dy: wOther.y-trial.y };
+        }
+      });
+    });
+  });
+  return best;
+}
 
 function tryConnect(a, b){
   if(a.compId===b.compId) return; // no self loops
@@ -2639,6 +2716,7 @@ buildPalette();
 render();
 })();
 </script>
+
 
 </body>
 </html>
