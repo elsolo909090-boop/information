@@ -480,7 +480,10 @@
     </div>
 
     <div class="topbar-group">
+      <button class="btn" id="btnUndo" title="Ctrl+Z">↩ Отменить</button>
       <button class="btn" id="btnRotate" title="R или Пробел">⟲ Повернуть</button>
+      <button class="btn" id="btnCopy" title="Ctrl+C">⧉ Копировать</button>
+      <button class="btn" id="btnPaste" title="Ctrl+V">📋 Вставить</button>
       <button class="btn danger" id="btnDelete" title="Delete">✕ Удалить</button>
     </div>
 
@@ -506,7 +509,7 @@
       <div class="insp-empty" id="inspEmpty">
         Выберите элемент на схеме, чтобы изменить его параметры — или добавьте новый из панели слева.
         <p class="pal-hint" style="margin-top:10px;">Начните с «Ввод ХВС/ГВС» — это труба из стояка. Дальше: счётчик → кран → коллектор → арматура → потребитель.</p>
-        <p class="pal-hint" style="margin-top:6px;">Горячие клавиши: R / Пробел — повернуть, Delete — удалить, Ctrl+C / Ctrl+V — скопировать / вставить, Ctrl+Z — отменить, Ctrl+колесо мыши — масштаб.</p>
+        <p class="pal-hint" style="margin-top:6px;">Горячие клавиши: R / Пробел — повернуть, Delete — удалить, Ctrl+C / Ctrl+V — скопировать / вставить, Ctrl+Z — отменить, Ctrl+колесо мыши — масштаб. Если клавиши не срабатывают — те же действия есть кнопками наверху («↩ Отменить», «⧉ Копировать», «📋 Вставить», «✕ Удалить»).</p>
         <div class="legend">
           <div class="palette-title">Условные обозначения</div>
           <div class="legend-row"><span class="legend-swatch" style="background:var(--hot)"></span>Труба ГВС (горячая)</div>
@@ -595,26 +598,33 @@ function snapshot(){
   if(history.length > HISTORY_LIMIT) history.shift();
 }
 function undo(){
-  if(!history.length) return;
+  if(!history.length){ flashHint("Отменять пока нечего."); return; }
   const state = JSON.parse(history.pop());
   components = state.components; pipes = state.pipes; uid = state.uid;
   selection = null; pending = null; pendingMouseCm = null;
   render();
+  flashHint("Последнее действие отменено.");
 }
 
 /* ============================= CLIPBOARD (copy/paste) ============================= */
 let clipboard = null; // a plain-object copy of the last-copied component, sans id/position
 function copySelection(){
-  if(!selection || selection.kind!=="comp") return;
+  if(!selection || selection.kind!=="comp"){
+    flashHint("Сначала выберите элемент на схеме, чтобы скопировать его.");
+    return;
+  }
   const c = findComp(selection.id);
   if(!c) return;
   const copy = JSON.parse(JSON.stringify(c));
   delete copy.id;
   clipboard = copy;
-  flashHint("Элемент скопирован — Ctrl+V, чтобы вставить.");
+  flashHint("Элемент скопирован — «Вставить» (или Ctrl+V), чтобы добавить копию.");
 }
 function pasteClipboard(){
-  if(!clipboard) return;
+  if(!clipboard){
+    flashHint("Сначала скопируйте элемент («Копировать» или Ctrl+C).");
+    return;
+  }
   snapshot();
   const c = JSON.parse(JSON.stringify(clipboard));
   c.id = nextId();
@@ -1825,9 +1835,10 @@ function renderInspector(){
 
   const actions = document.createElement("div");
   actions.className = "insp-actions";
-  actions.innerHTML = `<button class="btn" id="btnRotIns">⟲ Повернуть 90°</button><button class="btn danger" id="btnDelIns">✕ Удалить элемент</button>`;
+  actions.innerHTML = `<button class="btn" id="btnRotIns">⟲ Повернуть 90°</button><button class="btn" id="btnCopyIns">⧉ Копировать</button><button class="btn danger" id="btnDelIns">✕ Удалить элемент</button>`;
   content.appendChild(actions);
   actions.querySelector("#btnRotIns").onclick = ()=>{ snapshot(); c.rot = ((c.rot||0)+90)%360; render(); };
+  actions.querySelector("#btnCopyIns").onclick = ()=> copySelection();
   actions.querySelector("#btnDelIns").onclick = ()=>{ removeComponent(c.id); selection=null; render(); };
 }
 
@@ -2238,6 +2249,15 @@ spaceWInp.oninput = syncSpaceConstraint;
 spaceHInp.oninput = syncSpaceConstraint;
 
 document.getElementById("btnRotate").onclick = ()=>{ if(selection && selection.kind==="comp"){ snapshot(); const c=findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); } } };
+document.getElementById("btnUndo").onclick = ()=> undo();
+// Plain buttons for copy/paste, alongside Ctrl+C/Ctrl+V — a keyboard shortcut
+// can be swallowed by all sorts of things upstream of this page (OS-level
+// bindings, browser extensions, the host page's own shortcuts), and when that
+// happens there was previously no other way to copy or paste at all. A click
+// always reaches this handler directly, so it works no matter what's eating
+// the keyboard combo.
+document.getElementById("btnCopy").onclick = ()=> copySelection();
+document.getElementById("btnPaste").onclick = ()=> pasteClipboard();
 document.getElementById("btnDelete").onclick = ()=>{
   if(!selection) return;
   if(selection.kind==="comp") removeComponent(selection.id);
