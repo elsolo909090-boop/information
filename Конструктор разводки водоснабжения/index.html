@@ -1714,6 +1714,26 @@ stage.addEventListener("pointerup", (evt)=>{
   }
   pipeDragCandidate = null;
   dragWaypoint = null;
+
+  // A route is normally traced as two separate clicks (start port, then end
+  // port) — but pressing on the start port and dragging straight to the end
+  // port in one motion, the way most diagramming tools work, is just as
+  // natural an expectation. That gesture never fires a second pointerdown on
+  // the end port (the button is already held), so without this it silently
+  // does nothing and the pipe never appears. Finish the route here too, the
+  // moment release lands on a different port; releasing anywhere else leaves
+  // the route pending, same as an ordinary first click would.
+  if(pending){
+    const target = evt.target.closest('[data-kind="port"]');
+    if(target){
+      const compId = target.dataset.compId, portId = target.dataset.portId;
+      if(!(pending.compId===compId && pending.portId===portId)){
+        tryConnect(pending, {compId, portId});
+        pending = null; pendingMouseCm = null;
+        render();
+      }
+    }
+  }
 });
 
 window.addEventListener("keydown", (e)=>{
