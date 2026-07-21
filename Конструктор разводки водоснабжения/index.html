@@ -2089,6 +2089,17 @@ function tryConnect(a, b){
     flashHint("Этот порт уже подключён. Сначала удалите существующую трубу.");
     return;
   }
+  // Reject wiring a resolved-hot run into a resolved-cold one (or vice versa) —
+  // e.g. a hot manifold's outlet run straight onto the water heater's COLD
+  // inlet. Ports with no source behind them yet (medium still unresolved) are
+  // always allowed through, same as before; this only catches the case where
+  // both sides already know what they are and they disagree.
+  const {portMedium} = propagateMedium();
+  const mediumA = portMedium[a.compId+"|"+a.portId], mediumB = portMedium[b.compId+"|"+b.portId];
+  if(mediumA && mediumB && mediumA !== mediumB){
+    flashHint("Нельзя соединить горячую и холодную линии напрямую — проверьте, куда ведёт труба (например, в водонагреватель заводится холодная вода, а не горячая).");
+    return;
+  }
   snapshot();
   pipes.push({ id: nextId(), a:{compId:a.compId, portId:a.portId}, b:{compId:b.compId, portId:b.portId}, waypoints: a.waypoints ? a.waypoints.slice() : [], diameter: lastPipeDiameter });
 }
