@@ -1,0 +1,1939 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Конструктор разводки водоснабжения</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --ink:#16262a;
+    --ink-soft:#3c5257;
+    --paper:#eef2f0;
+    --panel:#e3e9e5;
+    --panel-line:#c6d0cb;
+    --line-strong:#aab8b2;
+    --line-faint:#d7ddd9;
+    --copper:#a8571f;
+    --copper-deep:#8a4517;
+    --copper-tint:#f0ddc9;
+    --hot:#c0392b;
+    --hot-soft:#e6a79e;
+    --cold:#2464a8;
+    --cold-soft:#a9c6e6;
+    --ok:#3ee06d;
+    --canvas-bg:#f4f7f5;
+    --canvas-dot:#c3cec8;
+    --wall-edge:#8fa199;
+    --font-ui: -apple-system, "Segoe UI", "Inter", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+    --font-head: "Segoe UI Semibold", "Segoe UI", -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    --radius: 3px;
+  }
+  :root[data-theme="dark"]{
+    --ink:#e8efec;
+    --ink-soft:#a9bcb8;
+    --paper:#141c1d;
+    --panel:#1b2624;
+    --panel-line:#2c3a37;
+    --line-strong:#3c4d49;
+    --line-faint:#243230;
+    --copper:#d98a49;
+    --copper-deep:#f0a868;
+    --copper-tint:#3a2a1a;
+    --hot:#e2685a;
+    --hot-soft:#5a2b26;
+    --cold:#5a9bdc;
+    --cold-soft:#243c52;
+    --ok:#5fb578;
+    --canvas-bg:#101817;
+    --canvas-dot:#293632;
+    --wall-edge:#3c4d49;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e8efec;
+      --ink-soft:#a9bcb8;
+      --paper:#141c1d;
+      --panel:#1b2624;
+      --panel-line:#2c3a37;
+      --line-strong:#3c4d49;
+      --line-faint:#243230;
+      --copper:#d98a49;
+      --copper-deep:#f0a868;
+      --copper-tint:#3a2a1a;
+      --hot:#e2685a;
+      --hot-soft:#5a2b26;
+      --cold:#5a9bdc;
+      --cold-soft:#243c52;
+      --ok:#7cf0a3;
+      --canvas-bg:#101817;
+      --canvas-dot:#293632;
+      --wall-edge:#3c4d49;
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-ui);
+    font-size:14px;
+    line-height:1.4;
+  }
+  h1,h2,h3{text-wrap:balance;}
+
+  .app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    min-height:640px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:10px 16px;
+    background:var(--panel);
+    border-bottom:1px solid var(--panel-line);
+    flex-wrap:wrap;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    margin-right:auto;
+  }
+  .brand-mark{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--copper);
+    border:1px solid var(--copper);
+    border-radius:2px;
+    padding:2px 5px;
+  }
+  .brand h1{
+    font-family:var(--font-head);
+    font-size:16px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:.01em;
+  }
+  .topbar-group{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .topbar-group label{white-space:nowrap;}
+  select, .btn, input[type="text"], input[type="number"]{
+    font-family:var(--font-ui);
+    font-size:12.5px;
+    color:var(--ink);
+    background:var(--paper);
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    padding:5px 9px;
+  }
+  select{cursor:pointer;}
+  input[type="number"]{width:60px;font-variant-numeric:tabular-nums;}
+  .space-x{color:var(--ink-soft);font-size:11px;}
+  .btn{
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+    transition:background .12s,border-color .12s;
+  }
+  .btn:hover{border-color:var(--copper);}
+  .btn:active{transform:translateY(1px);}
+  .seg{
+    display:flex;
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .seg button{
+    border:none;
+    background:var(--paper);
+    color:var(--ink-soft);
+    font-family:var(--font-ui);
+    font-size:12px;
+    padding:5px 10px;
+    cursor:pointer;
+  }
+  .seg button + button{border-left:1px solid var(--line-strong);}
+  .seg button.active{background:var(--copper);color:#fff8f0;font-weight:600;}
+  .btn.primary{
+    background:var(--copper);
+    border-color:var(--copper-deep);
+    color:#fff8f0;
+    font-weight:600;
+  }
+  .btn.primary:hover{background:var(--copper-deep);}
+  .btn.danger:hover{border-color:var(--hot);color:var(--hot);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn:disabled:hover{border-color:var(--line-strong);color:var(--ink);}
+
+  /* ---------- Body layout ---------- */
+  .body{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+
+  /* ---------- Palette ---------- */
+  .palette{
+    width:238px;
+    flex:none;
+    background:var(--panel);
+    border-right:1px solid var(--panel-line);
+    overflow-y:auto;
+    padding:14px 12px 24px;
+  }
+  .palette-section + .palette-section{margin-top:18px;}
+  .palette-title{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 2px 8px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .palette-title::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--panel-line);
+  }
+  .pal-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    text-align:left;
+    background:var(--paper);
+    border:1px solid var(--panel-line);
+    border-radius:var(--radius);
+    padding:7px 9px;
+    margin-bottom:6px;
+    cursor:pointer;
+    font-size:12.5px;
+    color:var(--ink);
+  }
+  .pal-item:hover{border-color:var(--copper);background:var(--copper-tint);}
+  .pal-item svg{flex:none;}
+  .pal-item .pi-label{display:flex;flex-direction:column;gap:1px;}
+  .pal-item .pi-label b{font-weight:600;font-size:12.5px;}
+  .pal-item .pi-label span{font-size:10.5px;color:var(--ink-soft);}
+  .pal-hint{
+    font-size:11px;
+    color:var(--ink-soft);
+    padding:2px;
+    line-height:1.5;
+  }
+
+  /* ---------- Canvas ---------- */
+  .canvas-wrap{
+    flex:1;
+    position:relative;
+    overflow:auto;
+    background:var(--canvas-bg);
+  }
+  .canvas-wrap svg#stage{display:block;cursor:default;}
+  .wall-plate{fill:var(--canvas-bg);}
+  .dot{fill:var(--canvas-dot);}
+
+  .port-hit{cursor:crosshair;}
+  .port-hit:hover circle.port-dot{stroke-width:2.6;}
+
+  .comp-hit{cursor:grab;}
+  .comp-hit:active{cursor:grabbing;}
+
+  .pipe-hit{cursor:pointer;}
+
+  /* ---------- Right inspector ---------- */
+  .inspector{
+    width:252px;
+    flex:none;
+    background:var(--panel);
+    border-left:1px solid var(--panel-line);
+    overflow-y:auto;
+    padding:14px 14px 24px;
+  }
+  .insp-empty{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.6;
+    padding-top:6px;
+  }
+  .insp-title{
+    font-family:var(--font-head);
+    font-size:13.5px;
+    font-weight:700;
+    margin:0 0 2px;
+  }
+  .insp-sub{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+    letter-spacing:.03em;
+  }
+  .insp-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .insp-row label{font-size:12px;color:var(--ink-soft);}
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:0;
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .stepper button{
+    width:26px;height:26px;
+    border:none;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:15px;
+    cursor:pointer;
+    line-height:1;
+  }
+  .stepper button:hover{background:var(--copper-tint);color:var(--copper-deep);}
+  .stepper output{
+    width:32px;
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:13px;
+    background:var(--paper);
+    border-left:1px solid var(--line-strong);
+    border-right:1px solid var(--line-strong);
+    height:26px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .insp-actions{
+    display:flex;
+    gap:8px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .swatch-row{display:flex;gap:6px;}
+  .swatch{
+    width:22px;height:22px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+  }
+  .swatch[data-m="hot"]{background:var(--hot);}
+  .swatch[data-m="cold"]{background:var(--cold);}
+  .swatch.active{border-color:var(--ink);}
+  .legend{
+    margin-top:20px;
+    padding-top:14px;
+    border-top:1px solid var(--panel-line);
+  }
+  .legend-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-soft);margin-bottom:6px;}
+  .legend-swatch{width:16px;height:3px;border-radius:2px;flex:none;}
+
+  /* ---------- Status bar ---------- */
+  .statusbar{
+    display:flex;
+    align-items:center;
+    gap:22px;
+    padding:8px 16px;
+    background:var(--panel);
+    border-top:1px solid var(--panel-line);
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--ink-soft);
+    flex-wrap:wrap;
+  }
+  .statusbar b{color:var(--ink);font-weight:600;}
+  .statusbar .sep{width:1px;height:14px;background:var(--panel-line);}
+  .hint-msg{margin-left:auto;color:var(--copper-deep);font-family:var(--font-ui);font-size:12px;}
+
+  ::-webkit-scrollbar{width:11px;height:11px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px;border:3px solid var(--panel);}
+
+  button:focus-visible, select:focus-visible, input:focus-visible, .pal-item:focus-visible{
+    outline:2px solid var(--copper);
+    outline-offset:1px;
+  }
+
+  @media (max-width:880px){
+    .palette{width:180px;}
+    .inspector{width:210px;}
+  }
+
+  /* ---------- Specification modal ---------- */
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(10,14,13,.5);
+    z-index:50;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    width:min(720px, 100%);
+    max-height:min(680px, 100%);
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 12px 40px rgba(0,0,0,.3);
+  }
+  .modal-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  .modal-head h2{margin:0;font-family:var(--font-head);font-size:16px;}
+  .modal-body{padding:18px 20px;overflow-y:auto;flex:1;}
+  .modal-foot{padding:14px 20px;border-top:1px solid var(--panel-line);display:flex;justify-content:flex-end;}
+  .spec-section + .spec-section{margin-top:22px;}
+  .spec-section h3{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 8px;
+  }
+  table.spec-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.spec-table th{
+    text-align:left;
+    font-size:11px;
+    color:var(--ink-soft);
+    font-weight:600;
+    padding:4px 8px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  table.spec-table td{padding:6px 8px;border-bottom:1px solid var(--line-faint);}
+  table.spec-table tr:last-child td{border-bottom:none;}
+  table.spec-table td.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .spec-empty{color:var(--ink-soft);font-size:13px;}
+  .spec-note{
+    margin-top:16px;
+    font-size:12px;
+    color:var(--ink-soft);
+    background:var(--copper-tint);
+    border:1px solid var(--copper);
+    border-radius:4px;
+    padding:9px 11px;
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark">ВК-01</span>
+      <h1>Конструктор разводки водоснабжения</h1>
+    </div>
+
+    <div class="topbar-group">
+      <label for="scaleSel">Масштаб</label>
+      <select id="scaleSel"></select>
+    </div>
+
+    <div class="topbar-group">
+      <label><input type="checkbox" id="snapChk" checked style="margin-right:5px;">Сетка 5 см</label>
+    </div>
+
+    <div class="topbar-group">
+      <label>Диаметр</label>
+      <div class="seg" id="unitToggle">
+        <button type="button" data-unit="mm" class="active">мм</button>
+        <button type="button" data-unit="inch">дюйм</button>
+      </div>
+    </div>
+
+    <div class="topbar-group">
+      <label><input type="checkbox" id="spaceChk" style="margin-right:5px;">Ограничить место</label>
+      <input type="number" id="spaceW" min="20" max="3000" step="10" value="200" disabled title="Ширина, см">
+      <span class="space-x">×</span>
+      <input type="number" id="spaceH" min="20" max="3000" step="10" value="150" disabled title="Высота, см">
+      <span class="space-x">см</span>
+    </div>
+
+    <div class="topbar-group">
+      <button class="btn" id="btnRotate" title="R или Пробел">⟲ Повернуть</button>
+      <button class="btn danger" id="btnDelete" title="Delete">✕ Удалить</button>
+    </div>
+
+    <div class="topbar-group">
+      <button class="btn primary" id="btnSpec">☰ Спецификация</button>
+    </div>
+
+    <div class="topbar-group">
+      <button class="btn" id="btnSave">Сохранить</button>
+      <button class="btn" id="btnLoad">Загрузить</button>
+      <button class="btn danger" id="btnClear">Очистить</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="palette" id="palette"></div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="inspector" id="inspector">
+      <div class="insp-empty" id="inspEmpty">
+        Выберите элемент на схеме, чтобы изменить его параметры — или добавьте новый из панели слева.
+        <p class="pal-hint" style="margin-top:10px;">Начните с «Ввод ХВС/ГВС» — это труба из стояка. Дальше: счётчик → кран → коллектор → арматура → потребитель.</p>
+        <div class="legend">
+          <div class="palette-title">Условные обозначения</div>
+          <div class="legend-row"><span class="legend-swatch" style="background:var(--hot)"></span>Труба ГВС (горячая)</div>
+          <div class="legend-row"><span class="legend-swatch" style="background:var(--cold)"></span>Труба ХВС (холодная)</div>
+          <div class="legend-row"><span class="legend-swatch" style="background:var(--line-strong)"></span>Труба без источника</div>
+        </div>
+      </div>
+      <div id="inspContent" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="statusbar" id="statusbar">
+    <span>Занимаемая площадь узла: <b id="stArea">—</b></span>
+    <span class="sep"></span>
+    <span>Габариты: <b id="stBbox">—</b></span>
+    <span class="sep"></span>
+    <span>Элементов: <b id="stCount">0</b></span>
+    <span class="sep" id="stFitSep"></span>
+    <span id="stFit" style="display:none;font-weight:600;"></span>
+    <span class="hint-msg" id="hintMsg">Кликните по палубе слева, чтобы добавить элемент на стену.</span>
+  </div>
+</div>
+
+<div class="modal-overlay" id="specOverlay">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h2>Спецификация оборудования</h2>
+      <button class="btn" id="specCloseBtn">✕ Закрыть</button>
+    </div>
+    <div class="modal-body" id="specBody"></div>
+    <div class="modal-foot">
+      <button class="btn primary" id="specDownloadBtn">Скачать CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const SVGNS = "http://www.w3.org/2000/svg";
+const PAD_CM = 40;
+
+/* ============================= STATE ============================= */
+let PX = 4;
+const SCALES = [
+  {v:2.4, label:"Обзор · 1 см = 2.4 px"},
+  {v:4,   label:"Стандарт · 1 см = 4 px"},
+  {v:6,   label:"Крупно · 1 см = 6 px"},
+  {v:9,   label:"Монтаж · 1 см = 9 px"},
+];
+
+let components = [];
+let pipes = [];
+let uid = 1;
+const nextId = () => "n" + (uid++);
+
+let selection = null;   // {kind:'comp'|'pipe', id}
+let pending = null;     // {compId, portId, waypoints:[{x,y}]} — route being traced, awaiting a closing port click
+let pendingMouseCm = null; // live cursor position (cm) while tracing, for the rubber-band preview
+let drag = null;        // active drag state (moving a component)
+let dragWaypoint = null; // active drag state {pipeId, index} — reshaping a pipe's route without touching its port attachments
+let pipeDragCandidate = null; // {pipeId, startCm, moved} — disambiguates a plain click-to-select on a pipe from a drag-to-bend
+let hintTimer = null;
+let lastPipeDiameter = 20; // mm — new pipes reuse whatever size was last picked
+let diameterUnit = "mm"; // "mm" | "inch" — display mode only, values always stored in mm
+let spaceConstraint = null; // {w,h} cm, or null — an optional upfront boundary to plan the layout against
+let rafScheduled = false;
+function scheduleRender(){
+  if(rafScheduled) return;
+  rafScheduled = true;
+  requestAnimationFrame(()=>{ rafScheduled=false; render(); });
+}
+
+/* ============================= CATALOG ============================= */
+// All geometry in centimeters. dir: 'in' | 'out'. medium: 'hot'|'cold'|null (free) ; fixed:true means never overwritten by propagation.
+
+function rotatePt(dx, dy, rot){
+  switch(((rot%360)+360)%360){
+    case 90:  return [-dy, dx];
+    case 180: return [-dx, -dy];
+    case 270: return [dy, -dx];
+    default:  return [dx, dy];
+  }
+}
+
+const CATALOG = {
+
+  manifold: {
+    label: "Коллектор",
+    group: "Узел ввода",
+    defaultSize: () => ({w:10, h:0}), // h computed dynamically
+    create(medium){
+      return { type:"manifold", medium, count:4, rot:0, label: medium==="hot" ? "Коллектор ГВС" : "Коллектор ХВС", outletLabels: [] };
+    },
+    // Keeps outletLabels in lockstep with count (grow with blanks, shrink to fit) —
+    // called defensively so it self-heals both after +/- clicks and for schemes
+    // saved before this field existed.
+    syncOutletLabels(c){
+      if(!Array.isArray(c.outletLabels)) c.outletLabels = [];
+      while(c.outletLabels.length < c.count) c.outletLabels.push("");
+      if(c.outletLabels.length > c.count) c.outletLabels.length = c.count;
+    },
+    footprint(c){ return {w:14, h: 10 + c.count*8}; },
+    // Local layout constants (cm, center-relative) — draw() and ports() both derive
+    // stub/port positions from these so the clickable port always sits exactly on
+    // the drawn stub end, never floating off in empty space.
+    layout(c){
+      const h = CATALOG.manifold.footprint(c).h;
+      const barLeft = -6, barWidth = 8, stubLen = 6;
+      return {
+        h, barLeft, barWidth, stubLen,
+        barRight: barLeft + barWidth,
+        stubEndX: barLeft + barWidth + stubLen,
+        outY: (i)=> -h/2 + 10 + i*8,
+        inY: h/2 - 4,
+      };
+    },
+    ports(c){
+      const L = CATALOG.manifold.layout(c);
+      const list = [{id:"in", dx:0, dy: L.inY, dir:"in", medium:c.medium, fixed:true}];
+      for(let i=0;i<c.count;i++){
+        list.push({id:"out"+i, dx:L.stubEndX, dy: L.outY(i), dir:"out", medium:c.medium, fixed:true});
+      }
+      return list;
+    },
+    draw(c, g){
+      CATALOG.manifold.syncOutletLabels(c);
+      const fp = CATALOG.manifold.footprint(c);
+      const L = CATALOG.manifold.layout(c);
+      const barColor = c.medium==="hot" ? "var(--hot)" : "var(--cold)";
+      const barTop = -fp.h/2*PX + 6*PX, barH = (fp.h-12)*PX;
+      g.appendChild(rect(L.barLeft*PX, barTop, L.barWidth*PX, barH, {fill:barColor, opacity:.85, rx:2}));
+      g.appendChild(rect(L.barLeft*PX-1, barTop-4*PX, (L.barWidth+2)*PX, 4*PX, {fill:"var(--line-strong)", rx:1}));
+      for(let i=0;i<c.count;i++){
+        const y = L.outY(i) * PX;
+        g.appendChild(line(L.barRight*PX, y, L.stubEndX*PX, y, {stroke:barColor,"stroke-width":3.2}));
+        g.appendChild(text(L.barRight*PX-3*PX, y+3.5, String(i+1), {"font-size":9,"fill":"var(--paper)","text-anchor":"middle","font-family":"var(--font-mono)"}));
+        const outletLabel = c.outletLabels[i];
+        if(outletLabel){
+          g.appendChild(text((L.stubEndX+1.2)*PX, y+3, outletLabel, {"font-size":8.5,"fill":"var(--ink-soft)","font-family":"var(--font-ui)"}));
+        }
+      }
+      // inlet stub, a short run down to the "in" port (same length as the outlet stubs)
+      g.appendChild(line(0, (L.inY-L.stubLen)*PX, 0, L.inY*PX, {stroke:"var(--line-strong)","stroke-width":3.2}));
+      g.appendChild(text(L.barLeft*PX+2*PX, (fp.h/2-1)*PX, c.label, {"font-size":10.5,"fill":"var(--ink)","font-family":"var(--font-ui)","font-weight":"600"}));
+      g.appendChild(text(L.barLeft*PX+2*PX, (fp.h/2-1)*PX+12, "вводов: "+c.count, {"font-size":9.5,"fill":"var(--ink-soft)","font-family":"var(--font-mono)"}));
+    },
+    inspector(c, refresh){
+      CATALOG.manifold.syncOutletLabels(c);
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `
+        <div class="insp-row">
+          <label>Кол-во отводов (патрубков)</label>
+          <div class="stepper">
+            <button data-act="dec">–</button>
+            <output>${c.count}</output>
+            <button data-act="inc">+</button>
+          </div>
+        </div>
+        <div class="insp-row">
+          <label>Название</label>
+          <input type="text" id="fLabel" value="${escapeAttr(c.label)}" style="width:130px;">
+        </div>
+        <p class="pal-hint">Мин. 2, макс. 12 отводов. При уменьшении число отводов ниже подключённого — соединения к лишним портам будут удалены.</p>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:4px;">
+          <label>Подписи отводов</label>
+          <div id="outletLabelsWrap" style="display:flex;flex-direction:column;gap:5px;width:100%;"></div>
+        </div>
+      `;
+      wrap.querySelector('[data-act="inc"]').onclick=()=>{ if(c.count<12){c.count++; pruneOrphanPipes(); refresh();} };
+      wrap.querySelector('[data-act="dec"]').onclick=()=>{ if(c.count>2){c.count--; pruneOrphanPipes(); refresh();} };
+      wrap.querySelector('#fLabel').oninput=(e)=>{ c.label=e.target.value; refresh("stage"); };
+
+      const olWrap = wrap.querySelector('#outletLabelsWrap');
+      for(let i=0;i<c.count;i++){
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:6px;";
+        row.innerHTML = `<span style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-soft);width:14px;flex:none;">${i+1}</span>
+          <input type="text" data-idx="${i}" value="${escapeAttr(c.outletLabels[i]||"")}" placeholder="например, кухня" style="flex:1;min-width:0;">`;
+        row.querySelector('input').oninput = (e)=>{ c.outletLabels[i] = e.target.value; refresh("stage"); };
+        olWrap.appendChild(row);
+      }
+      return wrap;
+    }
+  },
+
+  source: {
+    label: "Ввод (источник)",
+    group: "Узел ввода",
+    footprint:()=>({w:6,h:6}),
+    create(medium){ return {type:"source", medium, rot:0}; },
+    ports(c){ return [ {id:"out", dx:3, dy:0, dir:"out", medium:c.medium, fixed:true} ]; },
+    draw(c,g){
+      const color = c.medium==="hot" ? "var(--hot)" : "var(--cold)";
+      g.appendChild(rect(-3*PX,-3*PX, 1.6*PX, 6*PX, {fill:"var(--line-strong)", stroke:"var(--ink)", "stroke-width":1, rx:1}));
+      for(let i=-1;i<=1;i++) g.appendChild(circle(-2.2*PX, i*1.7*PX, .55*PX, {fill:"var(--ink)"}));
+      g.appendChild(line(-1.4*PX,0, 3*PX,0, {stroke:color, "stroke-width":3.6, "stroke-linecap":"round"}));
+      g.appendChild(el("path", {d:`M ${1.4*PX} ${-1.3*PX} L ${3*PX} 0 L ${1.4*PX} ${1.3*PX}`, fill:"none", stroke:color, "stroke-width":1.8, "stroke-linejoin":"round", "stroke-linecap":"round"}));
+      g.appendChild(text(0,-4.4*PX, c.medium==="hot" ? "ввод ГВС" : "ввод ХВС", labelAttrsBold()));
+      g.appendChild(text(0, 4.8*PX, "от стояка", labelAttrs()));
+    }
+  },
+
+  strainer: {
+    label: "Косой фильтр",
+    group: "Арматура",
+    footprint:()=>({w:6,h:5}),
+    create(){ return {type:"strainer", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.2*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.2*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(circle(0,0,2.1*PX,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.6}));
+      // "slanted" mesh cup hanging below at 45deg, characteristic of a screw-in strainer
+      g.appendChild(el("path",{d:`M ${-1.3*PX} ${0.6*PX} L ${0.4*PX} ${3.4*PX} L ${1.9*PX} ${1.6*PX}`, fill:"var(--panel-line)", stroke:"var(--ink)", "stroke-width":1.1, "stroke-linejoin":"round"}));
+      for(let i=-1;i<=1;i++) g.appendChild(line(-1.5*PX,i*0.8*PX, 1.5*PX, i*0.8*PX, {stroke:"var(--ink)","stroke-width":.7,opacity:.55}));
+      g.appendChild(text(0, -3.4*PX, "фильтр", labelAttrs()));
+    }
+  },
+
+  valve: {
+    label: "Запорный кран",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"valve", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.4*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(el("path",{d:`M ${-1.4*PX} ${-1.3*PX} L ${1.4*PX} ${1.3*PX} L ${1.4*PX} ${-1.3*PX} L ${-1.4*PX} ${1.3*PX} Z`, fill:"var(--ok)", stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(line(0,-2.2*PX,0,2.2*PX,{stroke:"var(--ink)","stroke-width":2.6, "stroke-linecap":"round"}));
+      g.appendChild(text(0, -3.6*PX, "кран", labelAttrs()));
+    }
+  },
+
+  meter: {
+    label: "Счётчик воды",
+    group: "Арматура",
+    footprint:()=>({w:6,h:5}),
+    create(){ return {type:"meter", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.9*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.9*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(circle(0,0,2*PX,{fill:"var(--paper)", stroke:"var(--ink)","stroke-width":1.6}));
+      g.appendChild(circle(0,0,1.3*PX,{fill:"none", stroke:"var(--copper)","stroke-width":.8}));
+      for(let i=0;i<8;i++){ const a=i/8*2*Math.PI; g.appendChild(line(Math.cos(a)*1.5*PX,Math.sin(a)*1.5*PX, Math.cos(a)*1.75*PX, Math.sin(a)*1.75*PX, {stroke:"var(--ink)","stroke-width":.7})); }
+      g.appendChild(line(0,0, 0.9*PX, -0.6*PX, {stroke:"var(--copper-deep)","stroke-width":1.2, "stroke-linecap":"round"}));
+      g.appendChild(circle(0,0,.4*PX,{fill:"var(--copper-deep)"}));
+      g.appendChild(text(0, 3.8*PX, "счётчик", labelAttrs()));
+    }
+  },
+
+  plug: {
+    label: "Заглушка",
+    group: "Арматура",
+    footprint:()=>({w:3,h:3}),
+    create(){ return {type:"plug", rot:0}; },
+    ports(){ return [ {id:"in",dx:-1.5,dy:0,dir:"in",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-1.5*PX,0,-0.3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(rect(-0.3*PX,-1.6*PX,1.7*PX,3.2*PX,{fill:"var(--ink)",rx:1}));
+      g.appendChild(text(0, -3*PX, "заглушка", labelAttrs()));
+    }
+  },
+
+  finefilter: {
+    label: "Фильтр тонкой очистки",
+    group: "Арматура",
+    footprint:()=>({w:6,h:9}),
+    create(){ return {type:"finefilter", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:-3,dir:"in",medium:null}, {id:"out",dx:3,dy:-3,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,-3*PX,-1.6*PX,-3*PX,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(line(1.6*PX,-3*PX,3*PX,-3*PX,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(rect(-1.8*PX,-3.8*PX,3.6*PX,1.6*PX,{fill:"var(--copper)",stroke:"var(--copper-deep)","stroke-width":1,rx:1}));
+      g.appendChild(el("path",{d:`M ${-1.5*PX} ${-2.2*PX} L ${-1.7*PX} ${3.6*PX} Q 0 ${4.6*PX} ${1.7*PX} ${3.6*PX} L ${1.5*PX} ${-2.2*PX} Z`, fill:"var(--cold-soft)", stroke:"var(--ink)","stroke-width":1.2}));
+      for(let i=0;i<3;i++) g.appendChild(line(-1.2*PX, (-1+i*1.6)*PX, 1.2*PX, (-1+i*1.6)*PX, {stroke:"var(--ink)","stroke-width":.7,opacity:.5}));
+      g.appendChild(text(0, -5*PX, "тонкая очистка", labelAttrs()));
+    }
+  },
+
+  heater: {
+    label: "Водонагреватель",
+    group: "Оборудование",
+    footprint:()=>({w:12,h:14}),
+    create(){ return {type:"heater", rot:0}; },
+    ports(){ return [ {id:"in",dx:-6,dy:5,dir:"in",medium:"cold",fixed:true}, {id:"out",dx:6,dy:5,dir:"out",medium:"hot",fixed:true} ]; },
+    draw(c,g){
+      g.appendChild(line(-6*PX,5*PX,-4.6*PX,5*PX,{stroke:"var(--cold)","stroke-width":2.6}));
+      g.appendChild(line(4.6*PX,5*PX,6*PX,5*PX,{stroke:"var(--hot)","stroke-width":2.6}));
+      g.appendChild(rect(-4.6*PX,-6.5*PX,9.2*PX,11.5*PX,{fill:"var(--copper-tint)",stroke:"var(--ink)","stroke-width":1.4,rx:8}));
+      g.appendChild(circle(0,-1.5*PX,3.2*PX,{fill:"none",stroke:"var(--copper-deep)","stroke-width":1.2,opacity:.6}));
+      // bolt = electric/heat symbol
+      g.appendChild(el("path",{d:`M ${0.6*PX} ${-3.6*PX} L ${-1.2*PX} ${-0.4*PX} L ${0.2*PX} ${-0.4*PX} L ${-0.7*PX} ${2.4*PX} L ${1.6*PX} ${-1.2*PX} L ${0.1*PX} ${-1.2*PX} Z`, fill:"var(--copper-deep)"}));
+      g.appendChild(text(0, 6.5*PX, "водонагреватель", labelAttrs()));
+    }
+  },
+
+  leakvalve: {
+    label: "Кран с защитой от протечек",
+    group: "Арматура",
+    footprint:()=>({w:6,h:5}),
+    create(){ return {type:"leakvalve", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.4*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(el("path",{d:`M ${-1.4*PX} ${-1.3*PX} L ${1.4*PX} ${1.3*PX} L ${1.4*PX} ${-1.3*PX} L ${-1.4*PX} ${1.3*PX} Z`, fill:"var(--ok)", stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(line(0,-2.2*PX,0,-0.6*PX,{stroke:"var(--ink)","stroke-width":2.4, "stroke-linecap":"round"}));
+      // small drop-shield badge = leak protection sensor
+      g.appendChild(circle(0, -3.6*PX, 1.7*PX, {fill:"var(--paper)", stroke:"var(--ok)", "stroke-width":1.1}));
+      g.appendChild(el("path",{d:`M 0 ${-4.3*PX} q ${0.9*PX} ${1.1*PX} 0 ${1.9*PX} q ${-0.9*PX} ${-0.8*PX} 0 ${-1.9*PX} Z`, fill:"var(--ok)"}));
+      g.appendChild(text(0, 3.6*PX, "аварийный кран", labelAttrs()));
+    }
+  },
+
+  hammer: {
+    label: "Датчик гидроудара",
+    group: "Арматура",
+    footprint:()=>({w:6,h:8}),
+    create(){ return {type:"hammer", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:2,dir:"in",medium:null}, {id:"out",dx:3,dy:2,dir:"out",medium:null} ]; },
+    draw(c,g){
+      const lineY = 2*PX;
+      g.appendChild(line(-3*PX,lineY,3*PX,lineY,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(0,lineY,0,-0.6*PX,{stroke:"var(--ink-soft)","stroke-width":2}));
+      g.appendChild(rect(-1*PX,-3.6*PX,2*PX,3.2*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.2, rx:5}));
+      g.appendChild(el("path",{d:`M ${-0.4*PX} ${-3.1*PX} L ${0.3*PX} ${-1.9*PX} L ${-0.2*PX} ${-1.9*PX} L ${0.4*PX} ${-0.6*PX}`, fill:"none", stroke:"var(--copper-deep)","stroke-width":1, "stroke-linejoin":"round","stroke-linecap":"round"}));
+      g.appendChild(text(0, 4.4*PX, "гидроудар", labelAttrs()));
+    }
+  },
+
+  tee: {
+    label: "Тройник",
+    group: "Соединения",
+    footprint:()=>({w:6,h:6}),
+    create(){ return {type:"tee", rot:0}; },
+    ports(){ return [
+      {id:"in",dx:-3,dy:0,dir:"in",medium:null},
+      {id:"out1",dx:3,dy:0,dir:"out",medium:null},
+      {id:"out2",dx:0,dy:3,dir:"out",medium:null},
+    ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(line(0,0,0,3*PX,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(circle(0,0,1.5*PX,{fill:"var(--ink-soft)",stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(text(0, -2.6*PX, "тройник", labelAttrs()));
+    }
+  },
+
+  elbow: {
+    label: "Отвод (угол 90°)",
+    group: "Соединения",
+    footprint:()=>({w:6,h:6}),
+    create(){ return {type:"elbow", rot:0}; },
+    ports(){ return [
+      {id:"in",dx:-3,dy:0,dir:"in",medium:null},
+      {id:"out",dx:0,dy:3,dir:"out",medium:null},
+    ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(line(0,1.4*PX,0,3*PX,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(el("path",{d:`M ${-1.4*PX} 0 Q 0 0 0 ${1.4*PX}`, fill:"none", stroke:"var(--ink-soft)","stroke-width":3, "stroke-linecap":"round"}));
+      g.appendChild(circle(0,0,1.1*PX,{fill:"var(--ink-soft)",stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(text(0, -2.6*PX, "отвод", labelAttrs()));
+    }
+  },
+
+  union: {
+    label: "Сгон",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"union", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(1*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(rect(-1*PX,-1.7*PX,2*PX,3.4*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.2}));
+      g.appendChild(line(-0.35*PX,-1.7*PX,-0.35*PX,1.7*PX,{stroke:"var(--copper-deep)","stroke-width":1}));
+      g.appendChild(line(0.35*PX,-1.7*PX,0.35*PX,1.7*PX,{stroke:"var(--copper-deep)","stroke-width":1}));
+      g.appendChild(text(0, -2.9*PX, "сгон", labelAttrs()));
+    }
+  },
+
+  connector: {
+    label: "Соединитель (евроконус)",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"connector", rot:0}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.6*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(1.2*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(rect(-1.6*PX,-1.5*PX,1.6*PX,3*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.2}));
+      g.appendChild(line(-1.1*PX,-1.5*PX,-1.1*PX,1.5*PX,{stroke:"var(--copper-deep)","stroke-width":.8}));
+      g.appendChild(el("path",{d:`M 0 ${-1.2*PX} L ${1.2*PX} ${-0.4*PX} L ${1.2*PX} ${0.4*PX} L 0 ${1.2*PX} Z`, fill:"var(--copper)", stroke:"var(--copper-deep)","stroke-width":1}));
+      g.appendChild(text(0, -2.6*PX, "соединитель", labelAttrs()));
+    }
+  },
+
+  consumer: {
+    label: "Потребитель",
+    group: "Потребители",
+    footprint:()=>({w:8,h:8}),
+    create(){ return {type:"consumer", rot:0, label:"Смеситель", name:""}; },
+    ports(){ return [
+      {id:"hot",dx:-2,dy:4,dir:"in",medium:null,wantHot:true},
+      {id:"cold",dx:2,dy:4,dir:"in",medium:null,wantCold:true},
+    ]; },
+    displayText(c){ return (c.name && c.name.trim()) ? c.name : c.label; },
+    draw(c,g){
+      g.appendChild(line(-2*PX,4*PX,-2*PX,1.6*PX,{stroke:"var(--hot)","stroke-width":2.2}));
+      g.appendChild(line(2*PX,4*PX,2*PX,1.6*PX,{stroke:"var(--cold)","stroke-width":2.2}));
+      g.appendChild(rect(-3.6*PX,-3.6*PX,7.2*PX,5.6*PX,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.4,rx:2}));
+      g.appendChild(el("path",{d:`M ${-1.6*PX} ${-3.6*PX} L 0 ${-6*PX} L ${1.6*PX} ${-3.6*PX}`, fill:"none", stroke:"var(--ink)","stroke-width":1.4, "stroke-linejoin":"round"}));
+      g.appendChild(text(0, 4.4*PX+11, CATALOG.consumer.displayText(c), labelAttrsBold()));
+    },
+    inspector(c, refresh){
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <label>Тип потребителя</label>
+          <select id="fType" style="width:100%;">
+            ${["Смеситель","Стиральная машина","Посудомоечная машина","Унитаз","Душевая кабина","Полотенцесушитель"].map(o=>`<option ${o===c.label?"selected":""}>${o}</option>`).join("")}
+          </select>
+        </div>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:10px;">
+          <label>Имя (по желанию)</label>
+          <input type="text" id="fName" value="${escapeAttr(c.name||"")}" placeholder="например, «Ванная — смеситель»" style="width:100%;">
+        </div>
+        <p class="pal-hint">Если имя задано, на схеме показывается оно вместо типа.</p>
+      `;
+      wrap.querySelector("#fType").onchange = (e)=>{ c.label = e.target.value; refresh(); };
+      wrap.querySelector("#fName").oninput = (e)=>{ c.name = e.target.value; refresh("stage"); };
+      return wrap;
+    }
+  },
+};
+
+function labelAttrs(){ return {"font-size":9,"fill":"var(--ink-soft)","text-anchor":"middle","font-family":"var(--font-mono)"}; }
+function labelAttrsBold(){ return {"font-size":10,"fill":"var(--ink)","text-anchor":"middle","font-family":"var(--font-ui)","font-weight":"600"}; }
+
+/* ============================= DOM HELPERS ============================= */
+function el(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function rect(x,y,w,h,attrs){ return el("rect", Object.assign({x,y,width:w,height:h}, attrs||{})); }
+function circle(cx,cy,r,attrs){ return el("circle", Object.assign({cx,cy,r}, attrs||{})); }
+function line(x1,y1,x2,y2,attrs){ return el("line", Object.assign({x1,y1,x2,y2}, attrs||{})); }
+function text(x,y,str,attrs){ const t = el("text", Object.assign({x,y}, attrs||{})); t.textContent = str; return t; }
+function escapeAttr(s){ return String(s).replace(/"/g,"&quot;"); }
+
+function getPorts(c){ return CATALOG[c.type].ports(c); }
+function getFootprint(c){
+  const fp = c.type==="manifold" ? CATALOG.manifold.footprint(c) : CATALOG[c.type].footprint(c);
+  const rot = ((c.rot%360)+360)%360;
+  return (rot===90||rot===270) ? {w:fp.h, h:fp.w} : fp;
+}
+function portWorldCm(c, port){
+  const [rdx, rdy] = rotatePt(port.dx, port.dy, c.rot||0);
+  return {x: c.x + rdx, y: c.y + rdy};
+}
+function findComp(id){ return components.find(c=>c.id===id); }
+function findPort(compId, portId){
+  const c = findComp(compId);
+  if(!c) return null;
+  return getPorts(c).find(p=>p.id===portId) || null;
+}
+
+/* ============================= MEDIUM PROPAGATION ============================= */
+function propagateMedium(){
+  const portMedium = {}; // key compId|portId -> medium
+  function key(cid,pid){ return cid+"|"+pid; }
+
+  components.forEach(c=>{
+    getPorts(c).forEach(p=>{
+      portMedium[key(c.id,p.id)] = p.fixed ? p.medium : null;
+    });
+  });
+
+  let changed = true, iter=0;
+  while(changed && iter < 40){
+    changed = false; iter++;
+    // through pipes
+    pipes.forEach(pipe=>{
+      const ka = key(pipe.a.compId, pipe.a.portId), kb = key(pipe.b.compId, pipe.b.portId);
+      const pa = findPort(pipe.a.compId, pipe.a.portId), pb = findPort(pipe.b.compId, pipe.b.portId);
+      if(!pa || !pb) return;
+      if(portMedium[ka] && !portMedium[kb] && !pb.fixed){ portMedium[kb]=portMedium[ka]; changed=true; }
+      if(portMedium[kb] && !portMedium[ka] && !pa.fixed){ portMedium[ka]=portMedium[kb]; changed=true; }
+    });
+    // through pass-through components (in -> all outs), skip fixed ports (e.g. heater out)
+    components.forEach(c=>{
+      const ports = getPorts(c);
+      const ins = ports.filter(p=>p.dir==="in");
+      const outs = ports.filter(p=>p.dir==="out");
+      ins.forEach(inp=>{
+        const kin = key(c.id, inp.id);
+        if(portMedium[kin]){
+          outs.forEach(o=>{
+            const ko = key(c.id, o.id);
+            if(!portMedium[ko] && !o.fixed){ portMedium[ko]=portMedium[kin]; changed=true; }
+          });
+        }
+      });
+    });
+  }
+  return {portMedium, key};
+}
+
+/* ============================= PIPE / GRAPH UTIL ============================= */
+// Flexible pipe (PEX/metal-plastic) runs straight between wherever the user leads
+// it — any angle, not just horizontal/vertical — and only ever bends with a soft
+// radius, never a sharp corner: a sharp 90° corner is a real fitting joint (see the
+// "Отвод" component), not something loose pipe can do on its own. Each interior
+// waypoint is rounded off with a small fillet; the pipe's actual heading is exactly
+// whatever the user clicked, at whatever angle that was — never straightened,
+// squared off, or auto-routed to something shorter.
+const PIPE_BEND_RADIUS_CM = 3.5;
+function roundedRoutePath(pts){
+  if(pts.length < 2) return "";
+  if(pts.length === 2) return `M ${pts[0].x*PX} ${pts[0].y*PX} L ${pts[1].x*PX} ${pts[1].y*PX}`;
+  let d = `M ${pts[0].x*PX} ${pts[0].y*PX}`;
+  for(let i=1;i<pts.length-1;i++){
+    const prev=pts[i-1], curr=pts[i], next=pts[i+1];
+    const v1x=curr.x-prev.x, v1y=curr.y-prev.y, len1=Math.hypot(v1x,v1y);
+    const v2x=next.x-curr.x, v2y=next.y-curr.y, len2=Math.hypot(v2x,v2y);
+    const r = Math.min(PIPE_BEND_RADIUS_CM, len1/2, len2/2);
+    const p1 = len1>0 ? {x:curr.x-v1x/len1*r, y:curr.y-v1y/len1*r} : curr;
+    const p2 = len2>0 ? {x:curr.x+v2x/len2*r, y:curr.y+v2y/len2*r} : curr;
+    d += ` L ${p1.x*PX} ${p1.y*PX} Q ${curr.x*PX} ${curr.y*PX} ${p2.x*PX} ${p2.y*PX}`;
+  }
+  const last = pts[pts.length-1];
+  d += ` L ${last.x*PX} ${last.y*PX}`;
+  return d;
+}
+// Total real-world length of a route (cm) — plain per-segment distance, since a
+// segment is now a literal straight line at whatever angle the user drew it.
+function routeLengthCm(pts){
+  let len = 0;
+  for(let i=1;i<pts.length;i++) len += Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+  return len;
+}
+
+// Standard household PPR/metal-plastic pipe bores, mm — stored internally as mm
+// always; "дюйм" is just a display mode mapping each bore to its standard nominal
+// inch designation (DN15↔1/2", DN20↔3/4" …), not a literal unit conversion.
+const PIPE_SIZES = [15, 20, 25, 32, 40];
+const PIPE_INCH_LABELS = {15:'1/2"', 20:'3/4"', 25:'1"', 32:'1 1/4"', 40:'1 1/2"'};
+// Pipe thickness drawn at the SAME cm→px scale as every fitting's footprint
+// (mm → cm → *PX) — not a fixed lookup — so a pipe's on-screen thickness is
+// actually measurable against the ruler and stays correctly proportioned to
+// component sizes at every zoom level, not just at one particular scale.
+function pipeStrokeWidth(mm){ return Math.max(1.6, (mm/10) * PX); }
+// Full label for dropdowns ("⌀ 20 мм" / '⌀ 3/4"') and short label for the on-canvas tag.
+function diameterLabelFull(mm){ return diameterUnit==="inch" ? "⌀ "+(PIPE_INCH_LABELS[mm]||mm+" мм") : "⌀ "+mm+" мм"; }
+function diameterLabelShort(mm){ return diameterUnit==="inch" ? "⌀"+(PIPE_INCH_LABELS[mm]||mm) : "⌀"+mm; }
+
+// A stable, non-overlapping spot to print a pipe's "⌀NN" label: the midpoint of
+// its single longest straight leg.
+function routeLabelAnchor(pts){
+  let bestLen=-1, mid=pts[0];
+  for(let i=1;i<pts.length;i++){
+    const p0=pts[i-1], p1=pts[i];
+    const len = Math.hypot(p1.x-p0.x, p1.y-p0.y);
+    if(len>bestLen){ bestLen=len; mid={x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2}; }
+  }
+  return mid;
+}
+
+function pipeConnectedTo(compId, portId){
+  return pipes.find(p =>
+    (p.a.compId===compId && p.a.portId===portId) ||
+    (p.b.compId===compId && p.b.portId===portId)
+  );
+}
+function pruneOrphanPipes(){
+  pipes = pipes.filter(p=>{
+    const okA = !!findPort(p.a.compId, p.a.portId);
+    const okB = !!findPort(p.b.compId, p.b.portId);
+    return okA && okB;
+  });
+}
+
+function distToSegmentCm(p, a, b){
+  const dx=b.x-a.x, dy=b.y-a.y;
+  const lenSq = dx*dx+dy*dy;
+  if(lenSq===0) return Math.hypot(p.x-a.x, p.y-a.y);
+  let t = ((p.x-a.x)*dx + (p.y-a.y)*dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x-(a.x+t*dx), p.y-(a.y+t*dy));
+}
+// Drops a brand-new waypoint into `pipe` at wherever along its route is nearest
+// to `cm`, without touching either end's port attachment. Returns the index the
+// new point landed at in pipe.waypoints, so the caller can immediately drag it.
+function insertWaypointNearest(pipe, cm){
+  const ca=findComp(pipe.a.compId), cb=findComp(pipe.b.compId);
+  const pa=findPort(pipe.a.compId,pipe.a.portId), pb=findPort(pipe.b.compId,pipe.b.portId);
+  if(!ca||!cb||!pa||!pb) return -1;
+  const wa=portWorldCm(ca,pa), wb=portWorldCm(cb,pb);
+  const pts=[wa, ...(pipe.waypoints||[]), wb];
+  let bestHop=1, bestDist=Infinity;
+  for(let i=1;i<pts.length;i++){
+    const d = distToSegmentCm(cm, pts[i-1], pts[i]);
+    if(d<bestDist){ bestDist=d; bestHop=i; }
+  }
+  const insertAt = bestHop-1;
+  if(!pipe.waypoints) pipe.waypoints = [];
+  pipe.waypoints.splice(insertAt, 0, {x:cm.x, y:cm.y});
+  return insertAt;
+}
+
+// Fittings that can be spliced into the middle of an already-routed pipe —
+// anything with a simple through-flow (in → out), including the tee, whose
+// spare branch (out2) is left free for the user to run a new line from.
+const SPLICE_TYPES = ["tee","strainer","valve","union","meter","finefilter","leakvalve","hammer"];
+
+// Picks where along a pipe's route to cut it: the longest straight leg (every
+// user-placed hop is already a straight line at whatever angle it was drawn), so
+// the inserted fitting always lands on a run with real room either side of it.
+// Fittings themselves still only rotate in 90° steps, so `horizontal` picks
+// whichever axis that leg leans more toward, purely to orient the new part.
+function pickSplitHop(pts){
+  let hopIndex=-1, bestLen=-1, mid=null, horizontal=true;
+  for(let i=1;i<pts.length;i++){
+    const p0=pts[i-1], p1=pts[i];
+    const dx=p1.x-p0.x, dy=p1.y-p0.y;
+    const legLen = Math.hypot(dx,dy);
+    if(legLen>bestLen){
+      bestLen = legLen; hopIndex = i;
+      horizontal = Math.abs(dx) >= Math.abs(dy);
+      mid = {x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2};
+    }
+  }
+  return {hopIndex, mid, horizontal};
+}
+
+// Splits `pipe` in two and drops a new `type` fitting at the cut, rewiring both
+// halves (and their share of the original waypoints/diameter) onto it.
+function spliceIntoPipe(pipe, type){
+  const ca = findComp(pipe.a.compId), cb = findComp(pipe.b.compId);
+  const pa = findPort(pipe.a.compId, pipe.a.portId), pb = findPort(pipe.b.compId, pipe.b.portId);
+  if(!ca || !cb || !pa || !pb) return;
+  const wa = portWorldCm(ca, pa), wb = portWorldCm(cb, pb);
+  const waypointsAll = pipe.waypoints || [];
+  const pts = [wa, ...waypointsAll, wb];
+  const split = pickSplitHop(pts);
+  if(split.hopIndex < 0) return;
+
+  const newComp = CATALOG[type].create();
+  newComp.id = nextId();
+  newComp.x = split.mid.x; newComp.y = split.mid.y;
+  newComp.rot = split.horizontal ? 0 : 90;
+  components.push(newComp);
+
+  const before = waypointsAll.slice(0, split.hopIndex-1);
+  const after = waypointsAll.slice(split.hopIndex-1);
+  const outPortId = type==="tee" ? "out1" : "out";
+  const sideAPort = pa.dir==="out" ? "in" : outPortId;
+  const sideBPort = pa.dir==="out" ? outPortId : "in";
+
+  pipes = pipes.filter(p=>p.id!==pipe.id);
+  pipes.push({ id: nextId(), a:{compId:pipe.a.compId, portId:pipe.a.portId}, b:{compId:newComp.id, portId:sideAPort}, waypoints: before, diameter: pipe.diameter });
+  pipes.push({ id: nextId(), a:{compId:newComp.id, portId:sideBPort}, b:{compId:pipe.b.compId, portId:pipe.b.portId}, waypoints: after, diameter: pipe.diameter });
+
+  selection = {kind:"comp", id:newComp.id};
+}
+function removeComponent(id){
+  pipes = pipes.filter(p => p.a.compId!==id && p.b.compId!==id);
+  components = components.filter(c=>c.id!==id);
+}
+
+/* ============================= RENDER ============================= */
+const stage = document.getElementById("stage");
+const canvasWrap = document.getElementById("canvasWrap");
+
+function computeBoundsCm(){
+  if(components.length===0) return {minX:0,minY:0,maxX:200,maxY:140};
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  components.forEach(c=>{
+    const fp = getFootprint(c);
+    minX = Math.min(minX, c.x-fp.w/2);
+    maxX = Math.max(maxX, c.x+fp.w/2);
+    minY = Math.min(minY, c.y-fp.h/2);
+    maxY = Math.max(maxY, c.y+fp.h/2);
+  });
+  return {minX,minY,maxX,maxY};
+}
+
+function render(){
+  renderStageOnly();
+  renderInspector();
+}
+
+// Redraws the SVG + status bar without touching the inspector panel's own DOM —
+// used while the user is typing into an inspector text field, so the <input>
+// itself is never destroyed/recreated (which would drop keyboard focus mid-word).
+const SPACE_ORIGIN_CM = {x:20, y:20}; // fixed anchor for the optional space boundary — matches where new parts spawn, so a fresh layout starts inside it
+
+function renderStageOnly(){
+  const b = computeBoundsCm();
+  let stageWcm = Math.max(b.maxX + PAD_CM*2, 260);
+  let stageHcm = Math.max(b.maxY + PAD_CM*2, 180);
+  if(spaceConstraint){
+    stageWcm = Math.max(stageWcm, SPACE_ORIGIN_CM.x + spaceConstraint.w + PAD_CM);
+    stageHcm = Math.max(stageHcm, SPACE_ORIGIN_CM.y + spaceConstraint.h + PAD_CM);
+  }
+  const Wpx = stageWcm*PX, Hpx = stageHcm*PX;
+  stage.setAttribute("width", Wpx);
+  stage.setAttribute("height", Hpx);
+  stage.setAttribute("viewBox", `0 0 ${Wpx} ${Hpx}`);
+  stage.innerHTML = "";
+
+  // wall background + grid
+  stage.appendChild(rect(0,0,Wpx,Hpx,{class:"wall-plate"}));
+  const grid = el("g", {});
+  const stepCm = 10;
+  for(let x=0; x<=stageWcm; x+=stepCm){
+    for(let y=0; y<=stageHcm; y+=stepCm){
+      grid.appendChild(circle(x*PX, y*PX, 1, {class:"dot"}));
+    }
+  }
+  stage.appendChild(grid);
+
+  // scale bar (50 cm reference)
+  const sbX = 18, sbY = Hpx-22;
+  stage.appendChild(line(sbX, sbY, sbX+50*PX, sbY, {stroke:"var(--ink-soft)","stroke-width":2}));
+  stage.appendChild(line(sbX, sbY-5, sbX, sbY+5, {stroke:"var(--ink-soft)","stroke-width":2}));
+  stage.appendChild(line(sbX+50*PX, sbY-5, sbX+50*PX, sbY+5, {stroke:"var(--ink-soft)","stroke-width":2}));
+  stage.appendChild(text(sbX, sbY-8, "50 см", {"font-size":10,"fill":"var(--ink-soft)","font-family":"var(--font-mono)"}));
+
+  // assembly bbox outline
+  if(components.length){
+    stage.appendChild(rect(b.minX*PX, b.minY*PX, (b.maxX-b.minX)*PX, (b.maxY-b.minY)*PX, {
+      fill:"none", stroke:"var(--copper)", "stroke-width":1, "stroke-dasharray":"4 4", opacity:.55
+    }));
+  }
+
+  // optional upfront space boundary — a planning guide, not a hard limit: parts can
+  // still be dragged past it, but it turns red the moment the layout actually does.
+  let spaceOverflow = false;
+  if(spaceConstraint){
+    spaceOverflow = components.length>0 && (
+      b.minX < SPACE_ORIGIN_CM.x || b.minY < SPACE_ORIGIN_CM.y ||
+      b.maxX > SPACE_ORIGIN_CM.x+spaceConstraint.w || b.maxY > SPACE_ORIGIN_CM.y+spaceConstraint.h
+    );
+    const bx = SPACE_ORIGIN_CM.x*PX, by = SPACE_ORIGIN_CM.y*PX;
+    const bw = spaceConstraint.w*PX, bh = spaceConstraint.h*PX;
+    const boundaryColor = spaceOverflow ? "var(--hot)" : "var(--wall-edge)";
+    stage.appendChild(rect(bx, by, bw, bh, {fill:"none", stroke:boundaryColor, "stroke-width":2.4, "stroke-dasharray": spaceOverflow ? "7 4" : "none", rx:2}));
+    stage.appendChild(text(bx, by-7, `Заданное пространство: ${spaceConstraint.w}×${spaceConstraint.h} см`, {"font-size":10.5,"fill":boundaryColor,"font-family":"var(--font-mono)","font-weight":"600"}));
+  }
+
+  const {portMedium} = propagateMedium();
+
+  // pipes layer
+  const pipeLayer = el("g", {});
+  pipes.forEach(p=>{
+    const ca = findComp(p.a.compId), cb = findComp(p.b.compId);
+    if(!ca||!cb) return;
+    const pa = findPort(p.a.compId, p.a.portId), pb = findPort(p.b.compId, p.b.portId);
+    const wa = portWorldCm(ca, pa), wb = portWorldCm(cb, pb);
+    const medium = portMedium[p.a.compId+"|"+p.a.portId] || portMedium[p.b.compId+"|"+p.b.portId];
+    const color = medium==="hot" ? "var(--hot)" : medium==="cold" ? "var(--cold)" : "var(--line-strong)";
+    const pts = [wa, ...(p.waypoints||[]), wb];
+    const d = roundedRoutePath(pts);
+    const isSel = selection && selection.kind==="pipe" && selection.id===p.id;
+    const diameter = p.diameter || 20;
+    const hit = el("path", {d, fill:"none", stroke:"transparent", "stroke-width":14, class:"pipe-hit"});
+    hit.dataset.kind="pipe"; hit.dataset.id=p.id;
+    const visible = el("path", {d, fill:"none", stroke:color, "stroke-width": pipeStrokeWidth(diameter) + (isSel?1.6:0), "stroke-linecap":"round"});
+    pipeLayer.appendChild(hit);
+    pipeLayer.appendChild(visible);
+    (p.waypoints||[]).forEach((wp,idx)=>{
+      const wg = el("g", {class:"comp-hit"});
+      wg.dataset.kind="waypoint"; wg.dataset.pipeId=p.id; wg.dataset.wpIndex=idx;
+      wg.appendChild(circle(wp.x*PX, wp.y*PX, 8, {fill:"transparent"}));
+      wg.appendChild(circle(wp.x*PX, wp.y*PX, isSel?3.2:2.4, {fill:"var(--paper)", stroke:color, "stroke-width":1.6}));
+      pipeLayer.appendChild(wg);
+    });
+    const anchor = routeLabelAnchor(pts);
+    const lblText = diameterLabelShort(diameter);
+    const lblW = 8 + lblText.length*4.6;
+    pipeLayer.appendChild(rect(anchor.x*PX-lblW/2, anchor.y*PX-16, lblW, 11, {fill:"var(--panel)", stroke:"var(--panel-line)", "stroke-width":isSel?1.2:.8, rx:3, opacity: isSel?1:.9}));
+    pipeLayer.appendChild(text(anchor.x*PX, anchor.y*PX-7.7, lblText, {"font-size":8.5, "fill": isSel?"var(--copper-deep)":"var(--ink-soft)", "font-family":"var(--font-mono)", "text-anchor":"middle", "font-weight": isSel?"700":"400"}));
+  });
+  stage.appendChild(pipeLayer);
+
+  // pending route preview — placed turns (solid) plus a rubber-band segment to the cursor (dashed)
+  if(pending){
+    const c = findComp(pending.compId), port = findPort(pending.compId, pending.portId);
+    if(c && port){
+      const startW = portWorldCm(c, port);
+      const chain = [startW, ...pending.waypoints];
+      const color = port.fixed && port.medium==="hot" ? "var(--hot)" : port.fixed && port.medium==="cold" ? "var(--cold)" : "var(--copper)";
+      if(chain.length>1){
+        stage.appendChild(el("path", {d:roundedRoutePath(chain), fill:"none", stroke:color, "stroke-width":3.4, "stroke-linecap":"round", opacity:.9}));
+      }
+      pending.waypoints.forEach(wp=>{
+        stage.appendChild(rect(wp.x*PX-3, wp.y*PX-3, 6, 6, {fill:color, stroke:"var(--paper)", "stroke-width":1.2}));
+      });
+      if(pendingMouseCm){
+        // A plain straight line to the pointer — not the orthogonal dogleg used for
+        // committed segments. That auto-elbow's "leading" axis flips as the mouse
+        // wobbles near a 45° diagonal, which reads as the pipe randomly changing its
+        // mind. A literal cursor-follow line has no such ambiguity; the orthogonal
+        // bend only gets fixed in place once the user actually clicks a point.
+        const last = chain[chain.length-1];
+        stage.appendChild(el("path", {d:`M ${last.x*PX} ${last.y*PX} L ${pendingMouseCm.x*PX} ${pendingMouseCm.y*PX}`, fill:"none", stroke:color, "stroke-width":2, "stroke-dasharray":"3 3", opacity:.55, "stroke-linecap":"round"}));
+      }
+      stage.appendChild(circle(startW.x*PX, startW.y*PX, 7, {fill:"none", stroke:"var(--copper)", "stroke-width":2, "stroke-dasharray":"3 2"}));
+    }
+  }
+
+  // components layer
+  components.forEach(c=>{
+    const def = CATALOG[c.type];
+    const g = el("g", {transform:`translate(${c.x*PX},${c.y*PX}) rotate(${c.rot||0})`, class:"comp-hit"});
+    g.dataset.kind="comp"; g.dataset.id=c.id;
+    def.draw(c, g);
+    if(selection && selection.kind==="comp" && selection.id===c.id){
+      const fp = def.type==="manifold" ? CATALOG.manifold.footprint(c) : def.footprint(c);
+      const outline = rect(-fp.w/2*PX-4, -fp.h/2*PX-4, fp.w*PX+8, fp.h*PX+8, {
+        fill:"none", stroke:"var(--copper)", "stroke-width":1.6, "stroke-dasharray":"5 3", rx:4,
+        transform:`rotate(${-(c.rot||0)})`
+      });
+      g.appendChild(outline);
+    }
+    stage.appendChild(g);
+
+    // ports (rendered un-rotated in world space for correct hit targets, on top)
+    getPorts(c).forEach(port=>{
+      const w = portWorldCm(c, port);
+      const medium = portMedium[c.id+"|"+port.id];
+      const connected = !!pipeConnectedTo(c.id, port.id);
+      const isPending = pending && pending.compId===c.id && pending.portId===port.id;
+      const fill = medium==="hot" ? "var(--hot)" : medium==="cold" ? "var(--cold)" : (connected ? "var(--ink-soft)" : "var(--paper)");
+      const stroke = isPending ? "var(--copper)" : (connected ? "var(--ink)" : "var(--line-strong)");
+      const pg = el("g", {class:"port-hit"});
+      pg.dataset.kind="port"; pg.dataset.compId=c.id; pg.dataset.portId=port.id;
+      pg.appendChild(circle(w.x*PX, w.y*PX, 6, {fill:"transparent"}));
+      pg.appendChild(circle(w.x*PX, w.y*PX, 3.6, {class:"port-dot", fill, stroke, "stroke-width":1.8}));
+      stage.appendChild(pg);
+    });
+  });
+
+  updateStatusbar(b, spaceOverflow);
+}
+
+function updateStatusbar(b, spaceOverflow){
+  const wCm = Math.max(0, b.maxX-b.minX), hCm = Math.max(0, b.maxY-b.minY);
+  const wM = wCm/100, hM = hCm/100;
+  const area = wM*hM;
+  document.getElementById("stArea").textContent = components.length ? `${area.toFixed(2)} м²` : "—";
+  document.getElementById("stBbox").textContent = components.length ? `${wCm.toFixed(0)} × ${hCm.toFixed(0)} см (${wM.toFixed(2)} × ${hM.toFixed(2)} м)` : "—";
+  document.getElementById("stCount").textContent = String(components.length);
+
+  const fitEl = document.getElementById("stFit");
+  const fitSep = document.getElementById("stFitSep");
+  if(spaceConstraint){
+    fitEl.style.display = "";
+    fitSep.style.display = "";
+    if(components.length===0){
+      fitEl.textContent = `Пространство: ${spaceConstraint.w}×${spaceConstraint.h} см`;
+      fitEl.style.color = "var(--ink-soft)";
+    } else if(spaceOverflow){
+      const overW = Math.max(0, wCm - spaceConstraint.w), overH = Math.max(0, hCm - spaceConstraint.h);
+      const overBits = [overW>0.5?`${overW.toFixed(0)} см по ширине`:null, overH>0.5?`${overH.toFixed(0)} см по высоте`:null].filter(Boolean).join(", ");
+      fitEl.textContent = `⚠ превышает ${spaceConstraint.w}×${spaceConstraint.h} см${overBits?" — на "+overBits:""}`;
+      fitEl.style.color = "var(--hot)";
+    } else {
+      fitEl.textContent = `✓ помещается в ${spaceConstraint.w}×${spaceConstraint.h} см`;
+      fitEl.style.color = "var(--ok)";
+    }
+  } else {
+    fitEl.style.display = "none";
+    fitSep.style.display = "none";
+  }
+}
+
+/* ============================= INSPECTOR ============================= */
+function renderInspector(){
+  const empty = document.getElementById("inspEmpty");
+  const content = document.getElementById("inspContent");
+  if(!selection || selection.kind!=="comp"){
+    empty.style.display = "block"; content.style.display="none";
+    if(selection && selection.kind==="pipe"){
+      const pipe = pipes.find(p=>p.id===selection.id);
+      if(!pipe){ selection=null; return; }
+      empty.style.display = "none"; content.style.display="block";
+      const turns = (pipe.waypoints||[]).length;
+      content.innerHTML = `<h2 class="insp-title">Труба</h2><p class="insp-sub">соединение · ${turns ? turns+" поворот(а/ов)" : "прямой участок"}</p>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <label>Диаметр</label>
+          <select id="fDiam" style="width:100%;">
+            ${PIPE_SIZES.map(mm=>`<option value="${mm}" ${(pipe.diameter||20)===mm?"selected":""}>${diameterLabelFull(mm)}</option>`).join("")}
+          </select>
+        </div>
+        <p class="pal-hint">Труба сама окрашивается по источнику (ГВС/ХВС), к которому в итоге подключена через коллектор.</p>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:4px;">
+          <label>Вставить в трассу</label>
+          <div id="spliceGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;"></div>
+          <p class="pal-hint">Труба разрежется в самом длинном прямом участке, и туда встанет выбранный элемент.</p>
+        </div>
+        <div class="insp-actions">
+          <button class="btn" id="clearRouteBtn" ${turns?"":"disabled"}>Спрямить трассу</button>
+          <button class="btn danger" id="delPipeBtn">✕ Удалить трубу</button>
+        </div>`;
+      content.querySelector("#fDiam").onchange = (e)=>{ pipe.diameter = +e.target.value; lastPipeDiameter = pipe.diameter; render(); };
+      content.querySelector("#clearRouteBtn").onclick = ()=>{ pipe.waypoints = []; render(); };
+      content.querySelector("#delPipeBtn").onclick = ()=>{ pipes = pipes.filter(p=>p.id!==selection.id); selection=null; render(); };
+
+      const spliceGrid = content.querySelector("#spliceGrid");
+      SPLICE_TYPES.forEach(type=>{
+        const def = CATALOG[type];
+        const btn = document.createElement("button");
+        btn.className = "pal-item"; btn.type = "button";
+        btn.style.marginBottom = "0";
+        btn.appendChild(paletteIcon(type));
+        const lab = document.createElement("span"); lab.className="pi-label";
+        lab.innerHTML = `<b>${def.label}</b>`;
+        btn.appendChild(lab);
+        btn.onclick = ()=>{ spliceIntoPipe(pipe, type); render(); };
+        spliceGrid.appendChild(btn);
+      });
+    }
+    return;
+  }
+  const c = findComp(selection.id);
+  if(!c){ selection=null; empty.style.display="block"; content.style.display="none"; return; }
+  empty.style.display = "none"; content.style.display = "block";
+  content.innerHTML = "";
+  const def = CATALOG[c.type];
+
+  const h = document.createElement("h2"); h.className="insp-title"; h.textContent = c.label || def.label;
+  const sub = document.createElement("p"); sub.className="insp-sub"; sub.textContent = def.group.toUpperCase() + " · rot " + (c.rot||0) + "°";
+  content.appendChild(h); content.appendChild(sub);
+
+  if(def.inspector){
+    // refresh(true|undefined) = full render (stage+inspector); refresh(false) = inspector only;
+    // refresh("stage") = stage only — the one to use from a text input's oninput, so the
+    // input element itself is never rebuilt and keyboard focus survives each keystroke.
+    content.appendChild(def.inspector(c, (mode=true)=>{
+      if(mode==="stage") renderStageOnly();
+      else if(mode===false) renderInspector();
+      else render();
+    }));
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "insp-actions";
+  actions.innerHTML = `<button class="btn" id="btnRotIns">⟲ Повернуть 90°</button><button class="btn danger" id="btnDelIns">✕ Удалить элемент</button>`;
+  content.appendChild(actions);
+  actions.querySelector("#btnRotIns").onclick = ()=>{ c.rot = ((c.rot||0)+90)%360; render(); };
+  actions.querySelector("#btnDelIns").onclick = ()=>{ removeComponent(c.id); selection=null; render(); };
+}
+
+/* ============================= PALETTE ============================= */
+function paletteIcon(type, medium){
+  const svg = el("svg", {width:34, height:28, viewBox:"-17 -14 34 28"});
+  const savedPX = PX; PX_ICON_MODE = true;
+  const g = el("g", {transform:"scale(0.62)"});
+  const fakeC = medium ? {...CATALOG[type].create(medium)} : CATALOG[type].create();
+  fakeC.count = fakeC.count || 3;
+  // draw using icon-scale constant regardless of current PX
+  const iconPX = 3.2;
+  const origPX = PX; PX = iconPX;
+  CATALOG[type].draw(fakeC, g);
+  PX = origPX;
+  svg.appendChild(g);
+  return svg;
+}
+let PX_ICON_MODE = false;
+
+const PALETTE_DEF = [
+  {group:"Узел ввода", items:[
+    {type:"source", medium:"cold", label:"Ввод ХВС", sub:"труба из стояка, холодная"},
+    {type:"source", medium:"hot", label:"Ввод ГВС", sub:"труба из стояка, горячая"},
+    {type:"manifold", medium:"hot", label:"Коллектор ГВС", sub:"вводные патрубки, горячая"},
+    {type:"manifold", medium:"cold", label:"Коллектор ХВС", sub:"вводные патрубки, холодная"},
+  ]},
+  {group:"Соединения", items:[
+    {type:"tee", label:"Тройник", sub:"1 вход → 2 выхода"},
+    {type:"elbow", label:"Отвод (угол 90°)", sub:"поворот трассы"},
+    {type:"plug", label:"Заглушка", sub:"глушит порт"},
+  ]},
+  {group:"Арматура", items:[
+    {type:"strainer", label:"Косой фильтр", sub:"грубая очистка"},
+    {type:"valve", label:"Запорный кран", sub:"шаровый, перекрывает"},
+    {type:"union", label:"Сгон", sub:"разъёмное соединение"},
+    {type:"connector", label:"Соединитель (евроконус)", sub:"стык трубы с коллектором"},
+    {type:"meter", label:"Счётчик воды", sub:"учёт расхода"},
+    {type:"finefilter", label:"Фильтр тонкой очистки", sub:"картридж"},
+    {type:"leakvalve", label:"Кран с защитой от протечек", sub:"аварийное перекрытие"},
+    {type:"hammer", label:"Датчик гидроудара", sub:"гаситель гидроудара"},
+  ]},
+  {group:"Оборудование", items:[
+    {type:"heater", label:"Водонагреватель", sub:"вход ХВС → выход ГВС"},
+  ]},
+  {group:"Потребители", items:[
+    {type:"consumer", label:"Потребитель", sub:"смеситель / техника"},
+  ]},
+];
+
+function buildPalette(){
+  const root = document.getElementById("palette");
+  root.innerHTML = "";
+  PALETTE_DEF.forEach(section=>{
+    const sec = document.createElement("div"); sec.className="palette-section";
+    const title = document.createElement("div"); title.className="palette-title"; title.textContent = section.group;
+    sec.appendChild(title);
+    section.items.forEach(item=>{
+      const btn = document.createElement("button");
+      btn.className = "pal-item"; btn.type="button";
+      const icon = paletteIcon(item.type, item.medium);
+      btn.appendChild(icon);
+      const lab = document.createElement("span"); lab.className="pi-label";
+      lab.innerHTML = `<b>${item.label}</b><span>${item.sub}</span>`;
+      btn.appendChild(lab);
+      btn.onclick = ()=> addComponent(item.type, item.medium);
+      sec.appendChild(btn);
+    });
+    root.appendChild(sec);
+  });
+  const hint = document.createElement("p");
+  hint.className = "pal-hint";
+  hint.textContent = "Клик по порту начинает трубу. Кликайте по стене, чтобы проложить трассу с поворотами, и завершите на втором порту. Esc — отмена.";
+  root.appendChild(hint);
+}
+
+function addComponent(type, medium){
+  const def = CATALOG[type];
+  const c = medium ? def.create(medium) : def.create();
+  c.id = nextId();
+  // When a space boundary is set, new parts spawn inside it (not at the generic
+  // default spot) so a layout planned "upfront" naturally stays within bounds
+  // until the user deliberately drags something out.
+  const originX = spaceConstraint ? SPACE_ORIGIN_CM.x + 30 : 40;
+  const originY = spaceConstraint ? SPACE_ORIGIN_CM.y + 30 : 30;
+  c.x = originX + (components.length%6)*26;
+  c.y = originY + Math.floor(components.length/6)*26;
+  components.push(c);
+  selection = {kind:"comp", id:c.id};
+  render();
+  document.getElementById("hintMsg").textContent = "Элемент добавлен — перетащите его на нужное место у стены.";
+}
+/* ============================= INTERACTION ============================= */
+function cmFromEvent(evt){
+  const rect = stage.getBoundingClientRect();
+  const scaleX = stage.viewBox.baseVal.width / rect.width;
+  const scaleY = stage.viewBox.baseVal.height / rect.height;
+  const px = (evt.clientX - rect.left) * scaleX;
+  const py = (evt.clientY - rect.top) * scaleY;
+  return {x: px/PX, y: py/PX};
+}
+
+stage.addEventListener("pointerdown", (evt)=>{
+  const target = evt.target.closest("[data-kind]");
+
+  if(!target){
+    if(pending){
+      // empty wall / grid clicked mid-route: drop a turn and keep tracing
+      pending.waypoints.push(cmFromEvent(evt));
+      render();
+      return;
+    }
+    selection=null; pending=null; render(); return;
+  }
+  const kind = target.dataset.kind;
+
+  if(kind==="port"){
+    const compId = target.dataset.compId, portId = target.dataset.portId;
+    if(!pending){
+      pending = {compId, portId, waypoints:[]};
+      selection = null;
+      render();
+    } else {
+      if(pending.compId===compId && pending.portId===portId){
+        pending = null; render(); return;
+      }
+      tryConnect(pending, {compId, portId});
+      pending = null; pendingMouseCm = null;
+      render();
+    }
+    evt.stopPropagation();
+    return;
+  }
+
+  if(kind==="waypoint"){
+    if(pending) return;
+    const pipeId = target.dataset.pipeId, idx = +target.dataset.wpIndex;
+    dragWaypoint = {pipeId, index: idx};
+    selection = {kind:"pipe", id: pipeId};
+    try{ stage.setPointerCapture(evt.pointerId); }catch(err){}
+    render();
+    evt.stopPropagation();
+    return;
+  }
+
+  if(kind==="pipe"){
+    if(pending) return; // ignore clicks on other pipes while actively tracing a route
+    // Don't decide select-vs-reshape yet: a plain click should select the pipe (as
+    // before), but a drag from the same point should pull a brand-new bend out of
+    // the line right there — without touching either end's port attachment. See
+    // the pointermove handler below for where that split actually happens.
+    pipeDragCandidate = {pipeId: target.dataset.id, startCm: cmFromEvent(evt), moved:false};
+    try{ stage.setPointerCapture(evt.pointerId); }catch(err){}
+    return;
+  }
+
+  if(kind==="comp"){
+    if(pending){
+      flashHint("Во время трассировки трубы кликайте по свободной стене (поворот) или по порту (завершение). Esc — отмена.");
+      return;
+    }
+    const id = target.dataset.id;
+    const c = findComp(id);
+    selection = {kind:"comp", id};
+    const startCm = cmFromEvent(evt);
+    drag = { id, offX: startCm.x - c.x, offY: startCm.y - c.y, moved:false };
+    try{ stage.setPointerCapture(evt.pointerId); }catch(err){ /* unsupported input type, drag still works via document-level move */ }
+    render();
+  }
+});
+
+stage.addEventListener("pointermove", (evt)=>{
+  if(drag){
+    const cm = cmFromEvent(evt);
+    const c = findComp(drag.id);
+    if(!c) return;
+    let nx = cm.x - drag.offX, ny = cm.y - drag.offY;
+    const snap = document.getElementById("snapChk").checked;
+    if(snap){ nx = Math.round(nx/5)*5; ny = Math.round(ny/5)*5; }
+    nx = Math.max(8, nx); ny = Math.max(8, ny);
+    if(Math.abs(nx-c.x) > 0.01 || Math.abs(ny-c.y) > 0.01) drag.moved = true;
+    c.x = nx; c.y = ny;
+    scheduleRender();
+    return;
+  }
+
+  if(pipeDragCandidate && !dragWaypoint){
+    const cm = cmFromEvent(evt);
+    const dist = Math.hypot(cm.x-pipeDragCandidate.startCm.x, cm.y-pipeDragCandidate.startCm.y);
+    if(dist > 0.6){
+      const pipe = pipes.find(p=>p.id===pipeDragCandidate.pipeId);
+      if(pipe){
+        const idx = insertWaypointNearest(pipe, pipeDragCandidate.startCm);
+        if(idx>=0){ dragWaypoint = {pipeId: pipe.id, index: idx}; selection = {kind:"pipe", id: pipe.id}; }
+      }
+      pipeDragCandidate.moved = true;
+    }
+  }
+
+  if(dragWaypoint){
+    const pipe = pipes.find(p=>p.id===dragWaypoint.pipeId);
+    if(pipe && pipe.waypoints && pipe.waypoints[dragWaypoint.index]){
+      const cm = cmFromEvent(evt);
+      const snap = document.getElementById("snapChk").checked;
+      let nx=cm.x, ny=cm.y;
+      if(snap){ nx=Math.round(nx/5)*5; ny=Math.round(ny/5)*5; }
+      pipe.waypoints[dragWaypoint.index] = {x:nx, y:ny};
+    }
+    scheduleRender();
+    return;
+  }
+
+  if(pending){
+    pendingMouseCm = cmFromEvent(evt);
+    scheduleRender();
+  }
+});
+
+stage.addEventListener("pointerup", (evt)=>{
+  if(drag){ drag=null; }
+  if(pipeDragCandidate && !pipeDragCandidate.moved){
+    // never turned into a drag — treat it as the plain "select this pipe" click
+    selection = {kind:"pipe", id: pipeDragCandidate.pipeId};
+    render();
+  }
+  pipeDragCandidate = null;
+  dragWaypoint = null;
+});
+
+window.addEventListener("keydown", (e)=>{
+  if(e.key==="Escape" && specOverlay.classList.contains("open")){ specOverlay.classList.remove("open"); return; }
+  if(e.key==="Escape"){ pending=null; pendingMouseCm=null; render(); }
+  if((e.key==="Delete"||e.key==="Backspace") && selection && document.activeElement.tagName!=="INPUT"){
+    e.preventDefault();
+    if(selection.kind==="comp"){ removeComponent(selection.id); }
+    else if(selection.kind==="pipe"){ pipes = pipes.filter(p=>p.id!==selection.id); }
+    selection = null; render();
+  }
+  if((e.key==="r"||e.key==="R") && selection && selection.kind==="comp" && document.activeElement.tagName!=="INPUT"){
+    const c = findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); }
+  }
+  if(e.key===" " && selection && selection.kind==="comp"){
+    // Space also rotates the selected element — but only when focus isn't on a
+    // control that already uses Space itself (checkbox toggle, button activation,
+    // text entry), so it doesn't steal that interaction or scroll the page.
+    const tag = document.activeElement.tagName;
+    if(tag!=="INPUT" && tag!=="TEXTAREA" && tag!=="SELECT" && tag!=="BUTTON"){
+      e.preventDefault();
+      const c = findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); }
+    }
+  }
+});
+
+function tryConnect(a, b){
+  if(a.compId===b.compId) return; // no self loops
+  const pa = findPort(a.compId, a.portId), pb = findPort(b.compId, b.portId);
+  if(!pa || !pb) return;
+  // one side must be 'out', other 'in' (order-agnostic)
+  const aIsOut = pa.dir==="out", bIsOut = pb.dir==="out";
+  if(aIsOut===bIsOut) { flashHint("Соединяйте выход (из коллектора/тройника) со входом элемента."); return; }
+  if(pipeConnectedTo(a.compId, a.portId) || pipeConnectedTo(b.compId, b.portId)){
+    flashHint("Этот порт уже подключён. Сначала удалите существующую трубу.");
+    return;
+  }
+  pipes.push({ id: nextId(), a:{compId:a.compId, portId:a.portId}, b:{compId:b.compId, portId:b.portId}, waypoints: a.waypoints ? a.waypoints.slice() : [], diameter: lastPipeDiameter });
+}
+
+function flashHint(msg){
+  const el2 = document.getElementById("hintMsg");
+  el2.textContent = msg;
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(()=>{ el2.textContent = "Кликните по палитре слева, чтобы добавить элемент на стену."; }, 3200);
+}
+
+/* ============================= TOPBAR ACTIONS ============================= */
+const scaleSel = document.getElementById("scaleSel");
+SCALES.forEach((s,i)=>{
+  const o = document.createElement("option"); o.value=i; o.textContent=s.label; scaleSel.appendChild(o);
+});
+scaleSel.value = 1;
+scaleSel.onchange = ()=>{ PX = SCALES[+scaleSel.value].v; render(); };
+
+document.querySelectorAll('#unitToggle button').forEach(btn=>{
+  btn.onclick = ()=>{
+    diameterUnit = btn.dataset.unit;
+    document.querySelectorAll('#unitToggle button').forEach(b=>b.classList.toggle('active', b===btn));
+    render();
+  };
+});
+
+const spaceChk = document.getElementById("spaceChk"), spaceWInp = document.getElementById("spaceW"), spaceHInp = document.getElementById("spaceH");
+function syncSpaceConstraint(){
+  spaceWInp.disabled = spaceHInp.disabled = !spaceChk.checked;
+  if(spaceChk.checked){
+    const w = Math.max(20, +spaceWInp.value || 200), h = Math.max(20, +spaceHInp.value || 150);
+    spaceConstraint = {w, h};
+  } else {
+    spaceConstraint = null;
+  }
+  renderStageOnly();
+}
+spaceChk.onchange = syncSpaceConstraint;
+spaceWInp.oninput = syncSpaceConstraint;
+spaceHInp.oninput = syncSpaceConstraint;
+
+document.getElementById("btnRotate").onclick = ()=>{ if(selection && selection.kind==="comp"){ const c=findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); } } };
+document.getElementById("btnDelete").onclick = ()=>{
+  if(!selection) return;
+  if(selection.kind==="comp") removeComponent(selection.id);
+  else pipes = pipes.filter(p=>p.id!==selection.id);
+  selection=null; render();
+};
+
+const STORAGE_KEY = "water-supply-designer-v1";
+document.getElementById("btnSave").onclick = ()=>{
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({components, pipes, uid}));
+  flashHint("Схема сохранена в этом браузере.");
+};
+document.getElementById("btnLoad").onclick = ()=>{
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw){ flashHint("Сохранённой схемы не найдено."); return; }
+  try{
+    const data = JSON.parse(raw);
+    components = data.components || [];
+    pipes = data.pipes || [];
+    uid = data.uid || uid;
+    selection = null; pending = null;
+    render();
+    flashHint("Схема загружена.");
+  }catch(e){ flashHint("Не удалось загрузить сохранённую схему."); }
+};
+document.getElementById("btnClear").onclick = ()=>{
+  if(components.length===0 && pipes.length===0) return;
+  if(confirm("Очистить всю схему? Действие необратимо.")){
+    components = []; pipes = []; selection=null; pending=null; render();
+  }
+};
+
+/* ============================= SPECIFICATION ============================= */
+// A fitting has no size of its own — it takes whatever diameter the pipe(s)
+// threaded onto its ports actually are. Reads it straight off the connected
+// pipe(s) rather than storing a separate size on the fitting, so it can never
+// drift out of sync with what's actually drawn. A fitting with two different
+// diameters on its ports (rare, but possible on a reducer-like junction) lists
+// both; one with nothing connected yet shows no size at all.
+function fittingDiameterLabel(c){
+  const dias = new Set();
+  getPorts(c).forEach(port=>{
+    const pipe = pipeConnectedTo(c.id, port.id);
+    if(pipe) dias.add(pipe.diameter || 20);
+  });
+  if(dias.size===0) return "";
+  return [...dias].sort((a,b)=>a-b).map(diameterLabelFull).join(" / ");
+}
+
+function buildSpecification(){
+  const equipment = {}; // display name (incl. size) -> count
+  components.forEach(c=>{
+    let name;
+    if(c.type==="manifold") name = `${c.label} (${c.count} отв.)`;
+    else if(c.type==="source") name = c.medium==="hot" ? "Ввод ГВС (от стояка)" : "Ввод ХВС (от стояка)";
+    else if(c.type==="consumer") name = `Потребитель — ${CATALOG.consumer.displayText(c)}`;
+    else name = CATALOG[c.type].label;
+    // Manifolds already show their own outlet count instead of a single bore size.
+    if(c.type!=="manifold"){
+      const size = fittingDiameterLabel(c);
+      if(size) name += ` — ${size}`;
+    }
+    equipment[name] = (equipment[name]||0) + 1;
+  });
+
+  const pipeStats = {}; // mm -> {count, lengthCm}
+  pipes.forEach(p=>{
+    const ca=findComp(p.a.compId), cb=findComp(p.b.compId);
+    const pa=findPort(p.a.compId,p.a.portId), pb=findPort(p.b.compId,p.b.portId);
+    if(!ca||!cb||!pa||!pb) return;
+    const wa=portWorldCm(ca,pa), wb=portWorldCm(cb,pb);
+    const pts=[wa, ...(p.waypoints||[]), wb];
+    const mm = p.diameter||20;
+    if(!pipeStats[mm]) pipeStats[mm] = {count:0, lengthCm:0};
+    pipeStats[mm].count++;
+    pipeStats[mm].lengthCm += routeLengthCm(pts);
+  });
+
+  // A pipe can't thread directly onto a manifold's outlet/inlet — that joint always
+  // needs a compression fitting ("соединитель"/евроконус). Count one per pipe end
+  // that lands on a manifold without an explicit connector already placed there,
+  // sized to that pipe's diameter, so the spec reflects hardware you'll actually
+  // need to buy even if you didn't bother drawing it on the schematic.
+  const connectorStats = {}; // mm -> count
+  pipes.forEach(p=>{
+    const compA=findComp(p.a.compId), compB=findComp(p.b.compId);
+    if(!compA||!compB) return;
+    const mm = p.diameter||20;
+    if(compA.type==="manifold" && compB.type!=="connector") connectorStats[mm]=(connectorStats[mm]||0)+1;
+    if(compB.type==="manifold" && compA.type!=="connector") connectorStats[mm]=(connectorStats[mm]||0)+1;
+  });
+
+  return {equipment, pipeStats, connectorStats};
+}
+
+function specRows(spec){
+  const rows = [];
+  Object.keys(spec.equipment).sort((a,b)=>a.localeCompare(b,"ru")).forEach(name=>{
+    rows.push({section:"Оборудование и арматура", name, qty: spec.equipment[name]+" шт.", extra:""});
+  });
+  PIPE_SIZES.forEach(mm=>{
+    const s = spec.pipeStats[mm];
+    if(!s) return;
+    rows.push({section:"Трубы", name:`Труба ${diameterLabelFull(mm)}`, qty: s.count+" уч.", extra:(s.lengthCm/100).toFixed(1)+" м"});
+  });
+  PIPE_SIZES.forEach(mm=>{
+    const n = spec.connectorStats[mm];
+    if(!n) return;
+    rows.push({section:"Требуется докупить", name:`Соединитель (евроконус) ${diameterLabelFull(mm)} — под коллектор`, qty:n+" шт.", extra:""});
+  });
+  return rows;
+}
+
+function renderSpecBody(){
+  const spec = buildSpecification();
+  const rows = specRows(spec);
+  const body = document.getElementById("specBody");
+  if(rows.length===0){
+    body.innerHTML = `<p class="spec-empty">На схеме пока нет элементов — добавьте оборудование и трубы, чтобы получить спецификацию.</p>`;
+    return;
+  }
+  const sections = {};
+  rows.forEach(r=>{ (sections[r.section] = sections[r.section]||[]).push(r); });
+  let html = "";
+  ["Оборудование и арматура","Трубы","Требуется докупить"].forEach(sec=>{
+    if(!sections[sec]) return;
+    html += `<div class="spec-section"><h3>${sec}</h3><table class="spec-table"><thead><tr><th>Наименование</th><th>Кол-во</th><th>Длина</th></tr></thead><tbody>`;
+    sections[sec].forEach(r=>{
+      html += `<tr><td>${escapeAttr(r.name)}</td><td class="num">${escapeAttr(r.qty)}</td><td class="num">${escapeAttr(r.extra)}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+  if(Object.keys(spec.connectorStats).length){
+    html += `<p class="spec-note">Соединители посчитаны автоматически: труба не накручивается на коллектор напрямую, на каждый такой стык нужен переходник-евроконус нужного диаметра — независимо от того, нарисован ли он на схеме.</p>`;
+  }
+  body.innerHTML = html;
+}
+
+function specToCsv(){
+  const rows = specRows(buildSpecification());
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const lines = ["Раздел;Наименование;Количество;Длина"];
+  rows.forEach(r=> lines.push([r.section,r.name,r.qty,r.extra].map(esc).join(";")));
+  return lines.join("\r\n");
+}
+
+const specOverlay = document.getElementById("specOverlay");
+document.getElementById("btnSpec").onclick = ()=>{ renderSpecBody(); specOverlay.classList.add("open"); };
+document.getElementById("specCloseBtn").onclick = ()=> specOverlay.classList.remove("open");
+specOverlay.addEventListener("click", (e)=>{ if(e.target===specOverlay) specOverlay.classList.remove("open"); });
+document.getElementById("specDownloadBtn").onclick = ()=>{
+  const csv = "﻿" + specToCsv(); // BOM so Excel reads Cyrillic correctly
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "spetsifikatsiya.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+/* ============================= INIT ============================= */
+buildPalette();
+render();
+})();
+</script>
+
+</body>
+</html>
