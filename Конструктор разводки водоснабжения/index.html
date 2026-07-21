@@ -958,7 +958,20 @@ function el(tag, attrs){
 function rect(x,y,w,h,attrs){ return el("rect", Object.assign({x,y,width:w,height:h}, attrs||{})); }
 function circle(cx,cy,r,attrs){ return el("circle", Object.assign({cx,cy,r}, attrs||{})); }
 function line(x1,y1,x2,y2,attrs){ return el("line", Object.assign({x1,y1,x2,y2}, attrs||{})); }
-function text(x,y,str,attrs){ const t = el("text", Object.assign({x,y}, attrs||{})); t.textContent = str; return t; }
+// Every catalog draw() runs inside a <g rotate(drawRot)> for the component being
+// drawn. A label written straight into that group would tip over sideways/upside
+// down whenever the component itself is rotated — so text() counter-rotates each
+// label about its own anchor point, canceling the ancestor rotation and keeping
+// every caption level and readable no matter how the part is turned.
+let drawRot = 0;
+function text(x,y,str,attrs){
+  const a = Object.assign({}, attrs||{});
+  const r = ((drawRot%360)+360)%360;
+  if(r !== 0) a.transform = `rotate(${-r} ${x} ${y})`;
+  const t = el("text", Object.assign({x,y}, a));
+  t.textContent = str;
+  return t;
+}
 function escapeAttr(s){ return String(s).replace(/"/g,"&quot;"); }
 
 function getPorts(c){ return CATALOG[c.type].ports(c); }
@@ -1323,12 +1336,14 @@ function renderStageOnly(){
     }
   }
 
-  // components layer
+  // components layer — bodies first, in a plain single pass...
   components.forEach(c=>{
     const def = CATALOG[c.type];
     const g = el("g", {transform:`translate(${c.x*PX},${c.y*PX}) rotate(${c.rot||0})`, class:"comp-hit"});
     g.dataset.kind="comp"; g.dataset.id=c.id;
+    drawRot = c.rot||0;
     def.draw(c, g);
+    drawRot = 0;
     if(selection && selection.kind==="comp" && selection.id===c.id){
       const fp = def.type==="manifold" ? CATALOG.manifold.footprint(c) : def.footprint(c);
       const outline = rect(-fp.w/2*PX-4, -fp.h/2*PX-4, fp.w*PX+8, fp.h*PX+8, {
@@ -1338,8 +1353,17 @@ function renderStageOnly(){
       g.appendChild(outline);
     }
     stage.appendChild(g);
+  });
 
-    // ports (rendered un-rotated in world space for correct hit targets, on top)
+  // ...then EVERY component's ports, in a second pass appended after all bodies.
+  // Two adjacent parts (e.g. a water heater feeding straight into a manifold)
+  // routinely sit close enough that one body's bounding box overlaps the other's
+  // port — with ports interleaved per-component, whichever component came later
+  // in the array would silently paint over and swallow clicks on the earlier
+  // one's port, making that side impossible to hook a pipe onto. Drawing all
+  // ports as their own top layer, after every body, keeps every port clickable
+  // no matter the add order or how tightly parts are packed.
+  components.forEach(c=>{
     getPorts(c).forEach(port=>{
       const w = portWorldCm(c, port);
       const medium = portMedium[c.id+"|"+port.id];
@@ -1826,11 +1850,11 @@ function buildSpecification(){
     else if(c.type==="source") name = c.medium==="hot" ? "Ввод ГВС (от стояка)" : "Ввод ХВС (от стояка)";
     else if(c.type==="consumer") name = `Потребитель — ${CATALOG.consumer.displayText(c)}`;
     else name = CATALOG[c.type].label;
-    // Manifolds already show their own outlet count instead of a single bore size.
-    if(c.type!=="manifold"){
-      const size = fittingDiameterLabel(c);
-      if(size) name += ` — ${size}`;
-    }
+    // Sizes come from whatever's actually threaded onto each port — a manifold
+    // with outlets in more than one bore lists every size present, right
+    // alongside its own outlet count.
+    const size = fittingDiameterLabel(c);
+    if(size) name += ` — ${size}`;
     equipment[name] = (equipment[name]||0) + 1;
   });
 
