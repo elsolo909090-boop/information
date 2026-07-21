@@ -461,6 +461,10 @@
     </div>
 
     <div class="topbar-group">
+      <button class="btn" id="btnView3D" title="Изометрический вид (только просмотр)">🧊 3D вид</button>
+    </div>
+
+    <div class="topbar-group">
       <label><input type="checkbox" id="snapChk" checked style="margin-right:5px;">Сетка 5 см</label>
     </div>
 
@@ -575,6 +579,7 @@ let pendingMouseCm = null; // live cursor position (cm) while tracing, for the r
 let drag = null;        // active drag state (moving a component)
 let dragWaypoint = null; // active drag state {pipeId, index} — reshaping a pipe's route without touching its port attachments
 let pipeDragCandidate = null; // {pipeId, startCm, moved} — disambiguates a plain click-to-select on a pipe from a drag-to-bend
+let viewMode = "2d"; // '2d' | '3d' — 3D is a read-only isometric projection of the same schematic; all editing stays in 2D
 let hintTimer = null;
 let lastPipeDiameter = 20; // mm — new pipes reuse whatever size was last picked
 let diameterUnit = "mm"; // "mm" | "inch" — display mode only, values always stored in mm
@@ -1535,6 +1540,11 @@ function removeComponent(id){
 const stage = document.getElementById("stage");
 const canvasWrap = document.getElementById("canvasWrap");
 
+function computeSpaceOverflow(b){
+  if(!spaceConstraint || components.length===0) return false;
+  return b.minX < SPACE_ORIGIN_CM.x || b.minY < SPACE_ORIGIN_CM.y ||
+    b.maxX > SPACE_ORIGIN_CM.x+spaceConstraint.w || b.maxY > SPACE_ORIGIN_CM.y+spaceConstraint.h;
+}
 function computeBoundsCm(){
   if(components.length===0) return {minX:0,minY:0,maxX:200,maxY:140};
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
@@ -1553,12 +1563,119 @@ function render(){
   renderInspector();
 }
 
+/* ============================= 3D (ISOMETRIC) VIEW =============================
+   A read-only isometric projection of the same schematic — no separate data
+   model, no editing. The 2D model has no Z axis at all, so each component gets a
+   rough, schematic "how far it sticks out from the wall" figure per its group,
+   not a modeled real-world dimension. */
+const ISO_COS30 = Math.cos(Math.PI/6), ISO_SIN30 = Math.sin(Math.PI/6);
+const PIPE_ISO_DEPTH_CM = 3; // pipe runs sit close to the wall; fittings poke out further
+function isoProject(x, y, z){
+  return { x: (x - z) * ISO_COS30, y: y + (x + z) * ISO_SIN30 };
+}
+function compDepthCm(c){
+  if(c.type==="heater") return 32;
+  if(c.type==="manifold") return 9;
+  if(c.type==="consumer") return Math.max(6, Math.min(c.h||8, 45)*0.55);
+  const group = CATALOG[c.type].group;
+  if(group==="Узел ввода") return 10;
+  if(group==="Соединения") return 5;
+  return 6.5; // Арматура / Оборудование
+}
+// Builds the SVG matrix() that stands in for the normal translate/rotate/scale
+// group transform, so every catalog type's existing draw(c,g) can be reused
+// verbatim in 3D: it composes the same rotate+scale the 2D view uses with the
+// isometric shear and the component's z-depth offset as a single linear map
+// (matrix a,b,c,d) plus a translation (e,f) — all in one SVG transform.
+function isoGroupTransform(c, depthCm){
+  const s = c.scale || 1, rot = c.rot || 0;
+  const [c1x,c1y] = rotatePt(s,0,rot);
+  const [c2x,c2y] = rotatePt(0,s,rot);
+  const C00 = ISO_COS30*c1x, C01 = ISO_COS30*c2x;
+  const C10 = ISO_SIN30*c1x + c1y, C11 = ISO_SIN30*c2x + c2y;
+  const wx = c.x*PX, wy = c.y*PX, dpx = depthCm*PX;
+  const e = ISO_COS30*(wx - dpx);
+  const f = ISO_SIN30*(wx + dpx) + wy;
+  return `matrix(${C00},${C10},${C01},${C11},${e},${f})`;
+}
+
+function renderIsoStage(){
+  const b = computeBoundsCm();
+  const maxDepth = components.reduce((m,c)=>Math.max(m, compDepthCm(c)), PIPE_ISO_DEPTH_CM);
+  const cornersCm = [ {x:b.minX,y:b.minY},{x:b.maxX,y:b.minY},{x:b.minX,y:b.maxY},{x:b.maxX,y:b.maxY} ];
+  let minPX=Infinity,minPY=Infinity,maxPX=-Infinity,maxPY=-Infinity;
+  cornersCm.forEach(pt=>{
+    [0, maxDepth].forEach(z=>{
+      const proj = isoProject(pt.x, pt.y, z);
+      minPX=Math.min(minPX,proj.x); maxPX=Math.max(maxPX,proj.x);
+      minPY=Math.min(minPY,proj.y); maxPY=Math.max(maxPY,proj.y);
+    });
+  });
+  const padCm = PAD_CM*0.6 + maxDepth;
+  minPX-=padCm; minPY-=padCm; maxPX+=padCm; maxPY+=padCm;
+  const Wpx = Math.max((maxPX-minPX)*PX, 260*PX), Hpx = Math.max((maxPY-minPY)*PX, 180*PX);
+  stage.setAttribute("width", Wpx);
+  stage.setAttribute("height", Hpx);
+  stage.setAttribute("viewBox", `0 0 ${Wpx} ${Hpx}`);
+  stage.innerHTML = "";
+  const originPX = {x:-minPX*PX, y:-minPY*PX};
+  // isoProject() returns cm; roundedRoutePath()/pt*PX expect cm too, so fold the
+  // px origin shift back into cm terms once and reuse it on every projected point.
+  const originCm = {x: originPX.x/PX, y: originPX.y/PX};
+  function isoPtCm(x,y,z){ const p = isoProject(x,y,z); return {x:p.x+originCm.x, y:p.y+originCm.y}; }
+
+  const wallPts = [ {x:b.minX,y:b.minY},{x:b.maxX,y:b.minY},{x:b.maxX,y:b.maxY},{x:b.minX,y:b.maxY} ]
+    .map(pt=>isoPtCm(pt.x,pt.y,0)).map(p=>`${p.x*PX},${p.y*PX}`).join(" ");
+  stage.appendChild(el("polygon",{points:wallPts, class:"wall-plate"}));
+
+  const {portMedium} = propagateMedium();
+
+  const pipeLayer = el("g",{});
+  pipes.forEach(p=>{
+    const ca = findComp(p.a.compId), cb = findComp(p.b.compId);
+    if(!ca||!cb) return;
+    const pa = findPort(p.a.compId,p.a.portId), pb = findPort(p.b.compId,p.b.portId);
+    const wa = portWorldCm(ca,pa), wb = portWorldCm(cb,pb);
+    const medium = portMedium[p.a.compId+"|"+p.a.portId] || portMedium[p.b.compId+"|"+p.b.portId];
+    const color = medium==="hot" ? "var(--hot)" : medium==="cold" ? "var(--cold)" : "var(--line-strong)";
+    if(p.direct){
+      const ptA = isoPtCm(wa.x,wa.y,PIPE_ISO_DEPTH_CM), ptB = isoPtCm(wb.x,wb.y,PIPE_ISO_DEPTH_CM);
+      const d = `M ${ptA.x*PX} ${ptA.y*PX} L ${ptB.x*PX} ${ptB.y*PX}`;
+      pipeLayer.appendChild(el("path",{d, fill:"none", stroke:color, "stroke-width":5.5, "stroke-linecap":"butt"}));
+      return;
+    }
+    const pts = [wa, ...(p.waypoints||[]), wb].map(pt=>isoPtCm(pt.x,pt.y,PIPE_ISO_DEPTH_CM));
+    const d = roundedRoutePath(pts);
+    pipeLayer.appendChild(el("path",{d, fill:"none", stroke:color, "stroke-width":pipeStrokeWidth(p.diameter||20), "stroke-linecap":"round"}));
+  });
+  stage.appendChild(pipeLayer);
+
+  components.forEach(c=>{
+    const def = CATALOG[c.type];
+    const depth = compDepthCm(c);
+    // thin stem + wall-anchor dot showing how far the body pops off the wall
+    const anchor = isoPtCm(c.x, c.y, 0), tip = isoPtCm(c.x, c.y, depth);
+    stage.appendChild(el("line", {x1:anchor.x*PX, y1:anchor.y*PX, x2:tip.x*PX, y2:tip.y*PX, stroke:"var(--line-strong)", "stroke-width":1, "stroke-dasharray":"2 2", opacity:.5}));
+    stage.appendChild(circle(anchor.x*PX, anchor.y*PX, 2.2, {fill:"var(--line-strong)", opacity:.5}));
+
+    const g = el("g", {transform:`translate(${originPX.x},${originPX.y}) ${isoGroupTransform(c, depth)}`});
+    drawRot = c.rot||0;
+    def.draw(c, g);
+    drawRot = 0;
+    stage.appendChild(g);
+  });
+
+  document.getElementById("hintMsg").textContent = "3D-вид (изометрия, только просмотр) — переключитесь в 2D, чтобы редактировать схему.";
+  updateStatusbar(b, computeSpaceOverflow(b));
+}
+
 // Redraws the SVG + status bar without touching the inspector panel's own DOM —
 // used while the user is typing into an inspector text field, so the <input>
 // itself is never destroyed/recreated (which would drop keyboard focus mid-word).
 const SPACE_ORIGIN_CM = {x:20, y:20}; // fixed anchor for the optional space boundary — matches where new parts spawn, so a fresh layout starts inside it
 
 function renderStageOnly(){
+  if(viewMode==="3d"){ renderIsoStage(); return; }
   const b = computeBoundsCm();
   let stageWcm = Math.max(b.maxX + PAD_CM*2, 260);
   let stageHcm = Math.max(b.maxY + PAD_CM*2, 180);
@@ -2036,6 +2153,7 @@ function snappedCmFromEvent(evt){
 }
 
 stage.addEventListener("pointerdown", (evt)=>{
+  if(viewMode==="3d") return; // 3D is a read-only projection — no dragging, connecting, or tracing there
   // The stage itself is a real focusable element (tabindex="0") specifically so
   // this can claim keyboard focus outright on every click, rather than merely
   // blurring whatever had it. Two problems this fixes at once: (1) a form
@@ -2122,6 +2240,7 @@ stage.addEventListener("pointerdown", (evt)=>{
 });
 
 stage.addEventListener("pointermove", (evt)=>{
+  if(viewMode==="3d") return;
   if(drag){
     const cm = cmFromEvent(evt);
     const c = findComp(drag.id);
@@ -2182,6 +2301,7 @@ stage.addEventListener("pointermove", (evt)=>{
 });
 
 stage.addEventListener("pointerup", (evt)=>{
+  if(viewMode==="3d") return;
   if(drag){
     if(drag.snapTarget){
       tryConnect({compId: drag.id, portId: drag.snapTarget.ownPortId}, {compId: drag.snapTarget.otherCompId, portId: drag.snapTarget.otherPortId});
@@ -2447,6 +2567,14 @@ spaceChk.onchange = syncSpaceConstraint;
 spaceWInp.oninput = syncSpaceConstraint;
 spaceHInp.oninput = syncSpaceConstraint;
 
+const btnView3D = document.getElementById("btnView3D");
+btnView3D.onclick = ()=>{
+  viewMode = viewMode==="3d" ? "2d" : "3d";
+  btnView3D.textContent = viewMode==="3d" ? "📐 2D вид" : "🧊 3D вид";
+  btnView3D.classList.toggle("primary", viewMode==="3d");
+  if(viewMode==="3d"){ pending=null; pendingMouseCm=null; drag=null; dragWaypoint=null; pipeDragCandidate=null; }
+  render();
+};
 document.getElementById("btnRotate").onclick = ()=>{ if(selection && selection.kind==="comp"){ snapshot(); const c=findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); } } };
 document.getElementById("btnUndo").onclick = ()=> undo();
 // Plain buttons for copy/paste, alongside Ctrl+C/Ctrl+V — a keyboard shortcut
