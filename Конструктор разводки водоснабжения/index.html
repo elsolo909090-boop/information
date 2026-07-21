@@ -1597,9 +1597,30 @@ function renderStageOnly(){
     const wa = portWorldCm(ca, pa), wb = portWorldCm(cb, pb);
     const medium = portMedium[p.a.compId+"|"+p.a.portId] || portMedium[p.b.compId+"|"+p.b.portId];
     const color = medium==="hot" ? "var(--hot)" : medium==="cold" ? "var(--cold)" : "var(--line-strong)";
+    const isSel = selection && selection.kind==="pipe" && selection.id===p.id;
+
+    if(p.direct){
+      // Two fittings screwed straight together, not a routed run — a short,
+      // deliberately blunt (not rounded) seam right between the two ports,
+      // with a hex-nut mark instead of a diameter tag: there's no pipe stock
+      // here to size, just the thread the fittings already carry.
+      const d = `M ${wa.x*PX} ${wa.y*PX} L ${wb.x*PX} ${wb.y*PX}`;
+      const hit = el("path", {d, fill:"none", stroke:"transparent", "stroke-width":14, class:"pipe-hit"});
+      hit.dataset.kind="pipe"; hit.dataset.id=p.id;
+      const visible = el("path", {d, fill:"none", stroke:color, "stroke-width": isSel?7:5.5, "stroke-linecap":"butt", "pointer-events":"none"});
+      pipeLayer.appendChild(hit);
+      pipeLayer.appendChild(visible);
+      const mx=(wa.x+wb.x)/2*PX, my=(wa.y+wb.y)/2*PX, hr=4.2*PX;
+      const hexPts = [0,60,120,180,240,300].map(deg=>{
+        const rad = deg*Math.PI/180;
+        return `${mx+hr*Math.cos(rad)},${my+hr*Math.sin(rad)}`;
+      }).join(" ");
+      pipeLayer.appendChild(el("polygon", {points:hexPts, fill:"var(--paper)", stroke:isSel?"var(--copper-deep)":"var(--ink)", "stroke-width":isSel?1.8:1.3, "pointer-events":"none"}));
+      return;
+    }
+
     const pts = [wa, ...(p.waypoints||[]), wb];
     const d = roundedRoutePath(pts);
-    const isSel = selection && selection.kind==="pipe" && selection.id===p.id;
     const diameter = p.diameter || 20;
     const hit = el("path", {d, fill:"none", stroke:"transparent", "stroke-width":14, class:"pipe-hit"});
     hit.dataset.kind="pipe"; hit.dataset.id=p.id;
@@ -1751,6 +1772,23 @@ function renderInspector(){
       const pipe = pipes.find(p=>p.id===selection.id);
       if(!pipe){ selection=null; return; }
       empty.style.display = "none"; content.style.display="block";
+
+      if(pipe.direct){
+        // A screwed-together joint has nothing to size or splice — no pipe
+        // stock, no route to bend — so it gets its own minimal panel instead
+        // of the diameter/splice controls a routed pipe shows.
+        const tiA = portThreadInfo(pipe.a.compId, pipe.a.portId), tiB = portThreadInfo(pipe.b.compId, pipe.b.portId);
+        const sizeLabel = tiA ? threadSizeLabel(tiA.size) : "";
+        content.innerHTML = `<h2 class="insp-title">Прямое резьбовое соединение</h2>
+          <p class="insp-sub">${escapeAttr(sizeLabel)} · ${escapeAttr(tiA?tiA.type:"?")} ↔ ${escapeAttr(tiB?tiB.type:"?")}</p>
+          <p class="pal-hint">Фитинги свинчены впритык, без трубы между ними. Чтобы вместо этого проложить трубу — удалите соединение и соедините порты заново, разведя элементы на расстояние.</p>
+          <div class="insp-actions">
+            <button class="btn danger" id="delPipeBtn">✕ Разъединить</button>
+          </div>`;
+        content.querySelector("#delPipeBtn").onclick = ()=>{ snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); selection=null; render(); };
+        return;
+      }
+
       const turns = (pipe.waypoints||[]).length;
       content.innerHTML = `<h2 class="insp-title">Труба</h2><p class="insp-sub">соединение · ${turns ? turns+" поворот(а/ов)" : "прямой участок"}</p>
         <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
@@ -2193,6 +2231,34 @@ window.addEventListener("keydown", (e)=>{
   }
 });
 
+// Fittings that carry their own per-port thread (size + ВР/НР), i.e. anything
+// built on threadedFittingInspector(). соединители are deliberately excluded:
+// their two ports are "threaded end" and "pipe-clamp end", not two threads,
+// so there's no well-defined pair of thread types to check against each other.
+const DIRECT_JOIN_TYPES = new Set(["checkvalve","reducer","nipple","coupling","barrel","tee","elbow","valve","strainer","meter","plug","finefilter","leakvalve","hammer","union"]);
+// A fitting placed flush against a compatible neighbor screws straight onto it
+// — no pipe run needed. Only a same-size, opposite-thread pair (ВР+НР) can
+// actually make up like that; two ВР ends or two НР ends can't mate directly
+// no matter how close together they're drawn (that's what a nipple or a
+// coupling is *for*), and a size mismatch can't thread together at all.
+function portThreadInfo(compId, portId){
+  const c = findComp(compId);
+  if(!c || !DIRECT_JOIN_TYPES.has(c.type) || !Array.isArray(c.threads)) return null;
+  const idx = getPorts(c).findIndex(p=>p.id===portId);
+  if(idx<0) return null;
+  return {size: c.size, type: c.threads[idx]};
+}
+function threadsMateDirectly(tA, tB){
+  return !!tA && !!tB && tA.size===tB.size && tA.type!==tB.type;
+}
+// "touching", not a routed run. Generous on purpose: with the 5cm placement
+// grid on and typical fitting half-widths of ~2.5–3cm, dragging two bodies to
+// visibly sit flush against each other lands their ports anywhere from ~0 to
+// ~8cm apart depending on which way each side's position happened to round —
+// a tight threshold would make the feature work only sometimes for the exact
+// same "clearly adjacent" placement.
+const DIRECT_JOIN_MAX_DIST_CM = 8;
+
 function tryConnect(a, b){
   if(a.compId===b.compId) return; // no self loops
   const pa = findPort(a.compId, a.portId), pb = findPort(b.compId, b.portId);
@@ -2215,6 +2281,30 @@ function tryConnect(a, b){
     flashHint("Нельзя соединить горячую и холодную линии напрямую — проверьте, куда ведёт труба (например, в водонагреватель заводится холодная вода, а не горячая).");
     return;
   }
+
+  // Two threaded fittings placed touching each other (no route traced between
+  // them) join by screwing straight together instead of via a flexible pipe.
+  const ca = findComp(a.compId), cb = findComp(b.compId);
+  const wa = portWorldCm(ca, pa), wb = portWorldCm(cb, pb);
+  const distCm = Math.hypot(wa.x-wb.x, wa.y-wb.y);
+  const noRoute = !a.waypoints || a.waypoints.length===0;
+  if(noRoute && distCm <= DIRECT_JOIN_MAX_DIST_CM){
+    const tiA = portThreadInfo(a.compId, a.portId), tiB = portThreadInfo(b.compId, b.portId);
+    if(tiA && tiB){
+      if(!threadsMateDirectly(tiA, tiB)){
+        if(tiA.size !== tiB.size){
+          flashHint(`Впритык не состыкуются — разный размер резьбы (${threadSizeLabel(tiA.size)} и ${threadSizeLabel(tiB.size)}). Нужен переходник или труба.`);
+        } else {
+          flashHint(`Два конца ${tiA.type}-${tiB.type} напрямую не соединяются — нужен ${tiA.type==="ВР"?"ниппель/бочонок":"муфта"} между ними, или проложите трубу.`);
+        }
+        return;
+      }
+      snapshot();
+      pipes.push({ id: nextId(), a:{compId:a.compId, portId:a.portId}, b:{compId:b.compId, portId:b.portId}, direct:true });
+      return;
+    }
+  }
+
   snapshot();
   pipes.push({ id: nextId(), a:{compId:a.compId, portId:a.portId}, b:{compId:b.compId, portId:b.portId}, waypoints: a.waypoints ? a.waypoints.slice() : [], diameter: lastPipeDiameter });
 }
@@ -2422,6 +2512,7 @@ function buildSpecification(){
 
   const pipeStats = {}; // mm -> {count, lengthCm}
   pipes.forEach(p=>{
+    if(p.direct) return; // a screwed-together joint isn't a length of pipe stock
     const ca=findComp(p.a.compId), cb=findComp(p.b.compId);
     const pa=findPort(p.a.compId,p.a.portId), pb=findPort(p.b.compId,p.b.portId);
     if(!ca||!cb||!pa||!pb) return;
