@@ -711,6 +711,19 @@ function connectorInspector(c, refresh){
   return wrap;
 }
 
+// Typical real-world footprints (cm) per consumer type, used both as the
+// starting size when a type is picked and to size the on-canvas glyph itself —
+// so a "стиральная машина" actually reads as a much bigger box than a
+// "смеситель" at a glance, not just a differently-labeled identical icon.
+const CONSUMER_DEFAULT_SIZES = {
+  "Смеситель": {w:8, h:8},
+  "Стиральная машина": {w:60, h:60},
+  "Посудомоечная машина": {w:60, h:60},
+  "Унитаз": {w:40, h:65},
+  "Душевая кабина": {w:90, h:90},
+  "Полотенцесушитель": {w:50, h:15},
+};
+
 const CATALOG = {
 
   manifold: {
@@ -741,11 +754,19 @@ const CATALOG = {
         stubEndX: barLeft + barWidth + stubLen,
         outY: (i)=> -h/2 + 10 + i*8,
         inY: h/2 - 4,
+        endY: -h/2 + 2, // the bar's far end, opposite the inlet — sits right at the existing end-cap decoration
       };
     },
     ports(c){
       const L = CATALOG.manifold.layout(c);
-      const list = [{id:"in", dx:0, dy: L.inY, dir:"in", medium:c.medium, fixed:true}];
+      // "in" feeds the bar from the stack; "end" is the bar's OTHER end — a real
+      // collector isn't threaded shut at the factory, that far end needs either a
+      // заглушка or a continuation (another section, a drain valve, a gauge…), so
+      // it's exposed as an ordinary open port rather than assumed capped.
+      const list = [
+        {id:"in", dx:0, dy: L.inY, dir:"in", medium:c.medium, fixed:true},
+        {id:"end", dx:0, dy: L.endY, dir:"out", medium:c.medium, fixed:true},
+      ];
       for(let i=0;i<c.count;i++){
         list.push({id:"out"+i, dx:L.stubEndX, dy: L.outY(i), dir:"out", medium:c.medium, fixed:true});
       }
@@ -794,6 +815,11 @@ const CATALOG = {
           <label>Подписи отводов</label>
           <div id="outletLabelsWrap" style="display:flex;flex-direction:column;gap:5px;width:100%;"></div>
         </div>
+        <p class="pal-hint" style="margin-top:8px;${pipeConnectedTo(c.id,"end")?"":"color:var(--hot);"}">
+          ${pipeConnectedTo(c.id,"end")
+            ? "Дальний конец коллектора (порт сверху) подключён."
+            : "⚠ Дальний конец коллектора не заглушён (порт сверху, свободный) — с завода коллектор открыт с обеих сторон. Поставьте туда «Заглушку» либо продолжите трассу дальше."}
+        </p>
       `;
       wrap.querySelector('[data-act="inc"]').onclick=()=>{ if(c.count<12){ snapshot(); c.count++; pruneOrphanPipes(); refresh();} };
       wrap.querySelector('[data-act="dec"]').onclick=()=>{ if(c.count>2){ snapshot(); c.count--; pruneOrphanPipes(); refresh();} };
@@ -1139,19 +1165,30 @@ const CATALOG = {
   consumer: {
     label: "Потребитель",
     group: "Потребители",
-    footprint:()=>({w:8,h:8}),
-    create(){ return {type:"consumer", rot:0, label:"Смеситель", name:""}; },
-    ports(){ return [
-      {id:"hot",dx:-2,dy:4,dir:"in",medium:null,wantHot:true},
-      {id:"cold",dx:2,dy:4,dir:"in",medium:null,wantCold:true},
-    ]; },
+    footprint(c){ return {w: c.w||8, h: c.h||8}; },
+    create(){ const d = CONSUMER_DEFAULT_SIZES["Смеситель"]; return {type:"consumer", rot:0, label:"Смеситель", name:"", w:d.w, h:d.h}; },
+    ports(c){
+      const w=c.w||8, h=c.h||8;
+      return [
+        {id:"hot",dx:-w/4,dy:h/2,dir:"in",medium:null,wantHot:true},
+        {id:"cold",dx:w/4,dy:h/2,dir:"in",medium:null,wantCold:true},
+      ];
+    },
     displayText(c){ return (c.name && c.name.trim()) ? c.name : c.label; },
     draw(c,g){
-      g.appendChild(line(-2*PX,4*PX,-2*PX,1.6*PX,{stroke:"var(--hot)","stroke-width":2.2}));
-      g.appendChild(line(2*PX,4*PX,2*PX,1.6*PX,{stroke:"var(--cold)","stroke-width":2.2}));
-      g.appendChild(rect(-3.6*PX,-3.6*PX,7.2*PX,5.6*PX,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.4,rx:2}));
-      g.appendChild(el("path",{d:`M ${-1.6*PX} ${-3.6*PX} L 0 ${-6*PX} L ${1.6*PX} ${-3.6*PX}`, fill:"none", stroke:"var(--ink)","stroke-width":1.4, "stroke-linejoin":"round"}));
-      g.appendChild(text(0, 4.4*PX+11, CATALOG.consumer.displayText(c), labelAttrsBold()));
+      // Everything below scales off the component's own w/h (cm) instead of
+      // fixed constants, so a "стиральная машина" set to 60×60 actually reads
+      // as a much bigger box than a "смеситель" at 8×8 — real proportions on
+      // the plan, not just a bigger label on an identically-sized icon.
+      const w=c.w||8, h=c.h||8;
+      const hotX=-(w/4)*PX, coldX=(w/4)*PX, bottomY=(h/2)*PX;
+      const bodyHalfW = (w*0.42)*PX, bodyBottom = (h*0.28)*PX, bodyTop = -(h*0.42)*PX;
+      g.appendChild(line(hotX,bottomY,hotX,bodyBottom,{stroke:"var(--hot)","stroke-width":2.2}));
+      g.appendChild(line(coldX,bottomY,coldX,bodyBottom,{stroke:"var(--cold)","stroke-width":2.2}));
+      g.appendChild(rect(-bodyHalfW,bodyTop,bodyHalfW*2,bodyBottom-bodyTop,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.4,rx:2}));
+      const roofHalfW = bodyHalfW*0.7, roofPeak = bodyTop-(h*0.22)*PX;
+      g.appendChild(el("path",{d:`M ${-roofHalfW} ${bodyTop} L 0 ${roofPeak} L ${roofHalfW} ${bodyTop}`, fill:"none", stroke:"var(--ink)","stroke-width":1.4, "stroke-linejoin":"round"}));
+      g.appendChild(text(0, bottomY+11, CATALOG.consumer.displayText(c), labelAttrsBold()));
     },
     inspector(c, refresh){
       const wrap = document.createElement("div");
@@ -1159,7 +1196,7 @@ const CATALOG = {
         <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
           <label>Тип потребителя</label>
           <select id="fType" style="width:100%;">
-            ${["Смеситель","Стиральная машина","Посудомоечная машина","Унитаз","Душевая кабина","Полотенцесушитель"].map(o=>`<option ${o===c.label?"selected":""}>${o}</option>`).join("")}
+            ${Object.keys(CONSUMER_DEFAULT_SIZES).map(o=>`<option ${o===c.label?"selected":""}>${o}</option>`).join("")}
           </select>
         </div>
         <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:10px;">
@@ -1167,10 +1204,27 @@ const CATALOG = {
           <input type="text" id="fName" value="${escapeAttr(c.name||"")}" placeholder="например, «Ванная — смеситель»" style="width:100%;">
         </div>
         <p class="pal-hint">Если имя задано, на схеме показывается оно вместо типа.</p>
+        <div class="insp-row" style="margin-top:10px;">
+          <label>Ширина, см</label>
+          <input type="number" id="fW" min="5" max="200" step="1" value="${c.w||8}">
+        </div>
+        <div class="insp-row">
+          <label>Глубина, см</label>
+          <input type="number" id="fH" min="5" max="200" step="1" value="${c.h||8}">
+        </div>
+        <p class="pal-hint">Размер элемента на схеме — для наглядной оценки, сколько места займёт техника. Смена типа подставляет типовой размер, дальше его можно поправить вручную.</p>
       `;
-      wrap.querySelector("#fType").onchange = (e)=>{ snapshot(); c.label = e.target.value; refresh(); };
+      wrap.querySelector("#fType").onchange = (e)=>{
+        snapshot();
+        c.label = e.target.value;
+        const d = CONSUMER_DEFAULT_SIZES[c.label];
+        if(d){ c.w = d.w; c.h = d.h; }
+        refresh();
+      };
       wrap.querySelector("#fName").onfocus = ()=>snapshot();
       wrap.querySelector("#fName").oninput = (e)=>{ c.name = e.target.value; refresh("stage"); };
+      wrap.querySelector("#fW").onchange = (e)=>{ snapshot(); c.w = Math.max(5, Math.min(200, +e.target.value||8)); refresh(); };
+      wrap.querySelector("#fH").onchange = (e)=>{ snapshot(); c.h = Math.max(5, Math.min(200, +e.target.value||8)); refresh(); };
       return wrap;
     }
   },
@@ -1524,7 +1578,14 @@ function renderStageOnly(){
     const diameter = p.diameter || 20;
     const hit = el("path", {d, fill:"none", stroke:"transparent", "stroke-width":14, class:"pipe-hit"});
     hit.dataset.kind="pipe"; hit.dataset.id=p.id;
-    const visible = el("path", {d, fill:"none", stroke:color, "stroke-width": pipeStrokeWidth(diameter) + (isSel?1.6:0), "stroke-linecap":"round"});
+    // Painted (stroke≠none) SVG elements intercept pointer events on their own
+    // stroke area by default — so this purely-decorative colored line, drawn on
+    // top of the wide invisible "hit" path for hit-testing, was silently
+    // stealing every click landing exactly on the pipe's visible centerline
+    // (the one spot a user would naturally click) since it carries no
+    // data-kind for the click handler to resolve. pointer-events:none lets
+    // those clicks fall through to the hit path underneath.
+    const visible = el("path", {d, fill:"none", stroke:color, "stroke-width": pipeStrokeWidth(diameter) + (isSel?1.6:0), "stroke-linecap":"round", "pointer-events":"none"});
     pipeLayer.appendChild(hit);
     pipeLayer.appendChild(visible);
     (p.waypoints||[]).forEach((wp,idx)=>{
@@ -1537,8 +1598,8 @@ function renderStageOnly(){
     const anchor = routeLabelAnchor(pts);
     const lblText = diameterLabelShort(diameter);
     const lblW = 8 + lblText.length*4.6;
-    pipeLayer.appendChild(rect(anchor.x*PX-lblW/2, anchor.y*PX-16, lblW, 11, {fill:"var(--panel)", stroke:"var(--panel-line)", "stroke-width":isSel?1.2:.8, rx:3, opacity: isSel?1:.9}));
-    pipeLayer.appendChild(text(anchor.x*PX, anchor.y*PX-7.7, lblText, {"font-size":8.5, "fill": isSel?"var(--copper-deep)":"var(--ink-soft)", "font-family":"var(--font-mono)", "text-anchor":"middle", "font-weight": isSel?"700":"400"}));
+    pipeLayer.appendChild(rect(anchor.x*PX-lblW/2, anchor.y*PX-16, lblW, 11, {fill:"var(--panel)", stroke:"var(--panel-line)", "stroke-width":isSel?1.2:.8, rx:3, opacity: isSel?1:.9, "pointer-events":"none"}));
+    pipeLayer.appendChild(text(anchor.x*PX, anchor.y*PX-7.7, lblText, {"font-size":8.5, "fill": isSel?"var(--copper-deep)":"var(--ink-soft)", "font-family":"var(--font-mono)", "text-anchor":"middle", "font-weight": isSel?"700":"400", "pointer-events":"none"}));
   });
   stage.appendChild(pipeLayer);
 
