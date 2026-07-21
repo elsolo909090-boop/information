@@ -1938,6 +1938,16 @@ function cmFromEvent(evt){
 }
 
 stage.addEventListener("pointerdown", (evt)=>{
+  // A form control in the inspector (the size slider, a diameter <select>, a
+  // stepper button…) keeps keyboard focus after you're done with it — clicking
+  // an SVG shape doesn't blur it the way clicking plain page background would.
+  // Left stuck there, it silently swallows every keyboard shortcut afterward
+  // (Ctrl+Z/C/V, Delete, R, Space all defer to a focused field so native
+  // text-editing isn't hijacked). Reclaim focus the moment the user is back
+  // working on the canvas, so shortcuts never go dead after touching a widget.
+  if(document.activeElement && document.activeElement !== document.body && document.activeElement.blur){
+    document.activeElement.blur();
+  }
   const target = evt.target.closest("[data-kind]");
 
   if(!target){
@@ -2089,13 +2099,27 @@ stage.addEventListener("pointerup", (evt)=>{
   }
 });
 
-window.addEventListener("keydown", (e)=>{
-  const inField = document.activeElement && ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName);
+// True only when focus sits in something a user could actually be TYPING into
+// — a text-like <input> or a <textarea>. A focused <select> or <input
+// type="range"> (e.g. the size slider) has no editable text for native
+// Ctrl+C/V/Z or Delete to act on, so there's nothing to protect by deferring
+// to them — treating them the same as a text field only meant those shortcuts
+// silently going dead the moment either was touched, with no way back short
+// of clicking some other focusable element.
+const TEXT_INPUT_TYPES = new Set(["text","number","search","email","url","tel","password"]);
+function isTextEditingContext(){
+  const el = document.activeElement;
+  if(!el) return false;
+  if(el.tagName==="TEXTAREA") return true;
+  if(el.tagName==="INPUT") return TEXT_INPUT_TYPES.has((el.type||"text").toLowerCase());
+  return false;
+}
 
+window.addEventListener("keydown", (e)=>{
   // Ctrl/Cmd+Z / +C / +V — skipped while a text field has focus so the
   // browser's own native undo/copy/paste inside that field keeps working
   // exactly as expected, instead of being hijacked by the scheme-level ones.
-  if((e.ctrlKey||e.metaKey) && !inField){
+  if((e.ctrlKey||e.metaKey) && !isTextEditingContext()){
     if(e.key==="z"||e.key==="Z"){ e.preventDefault(); undo(); return; }
     if(e.key==="c"||e.key==="C"){ e.preventDefault(); copySelection(); return; }
     if(e.key==="v"||e.key==="V"){ e.preventDefault(); pasteClipboard(); return; }
@@ -2103,13 +2127,13 @@ window.addEventListener("keydown", (e)=>{
 
   if(e.key==="Escape" && specOverlay.classList.contains("open")){ specOverlay.classList.remove("open"); return; }
   if(e.key==="Escape"){ pending=null; pendingMouseCm=null; render(); }
-  if((e.key==="Delete"||e.key==="Backspace") && selection && document.activeElement.tagName!=="INPUT"){
+  if((e.key==="Delete"||e.key==="Backspace") && selection && !isTextEditingContext()){
     e.preventDefault();
     if(selection.kind==="comp"){ removeComponent(selection.id); }
     else if(selection.kind==="pipe"){ snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); }
     selection = null; render();
   }
-  if((e.key==="r"||e.key==="R") && selection && selection.kind==="comp" && document.activeElement.tagName!=="INPUT"){
+  if((e.key==="r"||e.key==="R") && selection && selection.kind==="comp" && !isTextEditingContext()){
     snapshot();
     const c = findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); }
   }
