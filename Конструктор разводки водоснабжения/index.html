@@ -526,6 +526,8 @@
     <span>Элементов: <b id="stCount">0</b></span>
     <span class="sep" id="stFitSep"></span>
     <span id="stFit" style="display:none;font-weight:600;"></span>
+    <span class="sep" id="stOpenSep" style="display:none;"></span>
+    <span id="stOpen" style="display:none;font-weight:600;color:var(--hot);"></span>
     <span class="hint-msg" id="hintMsg">Кликните по палубе слева, чтобы добавить элемент на стену.</span>
   </div>
 </div>
@@ -1704,6 +1706,16 @@ function updateStatusbar(b, spaceOverflow){
     fitEl.style.display = "none";
     fitSep.style.display = "none";
   }
+
+  const openEl = document.getElementById("stOpen");
+  const openSep = document.getElementById("stOpenSep");
+  const openCount = components.length ? findOpenPorts().length : 0;
+  if(openCount){
+    openEl.style.display = ""; openSep.style.display = "";
+    openEl.textContent = `⚠ незаглушено: ${openCount}`;
+  } else {
+    openEl.style.display = "none"; openSep.style.display = "none";
+  }
 }
 
 /* ============================= INSPECTOR ============================= */
@@ -2175,6 +2187,11 @@ document.getElementById("btnDelete").onclick = ()=>{
 
 const STORAGE_KEY = "water-supply-designer-v1";
 document.getElementById("btnSave").onclick = ()=>{
+  const openPorts = findOpenPorts();
+  if(openPorts.length && !confirm(
+    `На схеме ${openPorts.length} незаглушённых порт(ов) — например, свободный конец коллектора или вход арматуры без трубы.\n\n` +
+    `Список смотрите в Спецификации.\n\nВсё равно сохранить как есть?`
+  )) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({components, pipes, uid}));
   flashHint("Схема сохранена в этом браузере.");
 };
@@ -2226,24 +2243,67 @@ function fittingDiameterLabel(c){
 const THREADED_FIXED_TYPES = new Set(["checkvalve","reducer","nipple","coupling","barrel"]);
 const CONNECTOR_TYPES = new Set(["connector","connector_angle"]);
 
+// The same "what is this thing called" logic the spec's equipment table uses,
+// factored out so the open-ports check (below) can name a component the same
+// way instead of re-deriving it.
+function equipmentDisplayName(c){
+  let name;
+  if(c.type==="manifold") name = `${c.label} (${c.count} отв.)`;
+  else if(c.type==="source") name = c.medium==="hot" ? "Ввод ГВС (от стояка)" : "Ввод ХВС (от стояка)";
+  else if(c.type==="consumer") name = `Потребитель — ${CATALOG.consumer.displayText(c)}`;
+  else if(THREADED_FIXED_TYPES.has(c.type)) name = threadedName(c);
+  else if(CONNECTOR_TYPES.has(c.type)) name = `${CATALOG[c.type].label} - ${threadSizeLabel(c.size)} ${c.thread}`;
+  else name = CATALOG[c.type].label;
+  // Everything except the threaded-fixed group also gets whatever's actually
+  // threaded onto its ports appended — a manifold with outlets in more than
+  // one bore lists every size present, right alongside its outlet count; a
+  // соединитель gets the pipe-clamp side's diameter next to its own thread.
+  if(!THREADED_FIXED_TYPES.has(c.type)){
+    const size = fittingDiameterLabel(c);
+    if(size) name += ` — ${size}`;
+  }
+  return name;
+}
+
+// A short, human name for one specific port — "патрубок 2", "вход ГВС" — used
+// only by the open-ports check to say *which* opening on a component is bare.
+function portDisplayLabel(c, port){
+  if(c.type==="manifold"){
+    if(port.id==="in") return "ввод";
+    if(port.id==="end") return "свободный конец";
+    const label = c.outletLabels && c.outletLabels[+port.id.slice(3)];
+    const idx = +port.id.slice(3) + 1;
+    return label ? `патрубок ${idx} («${label}»)` : `патрубок ${idx}`;
+  }
+  if(c.type==="consumer") return port.id==="hot" ? "вход ГВС" : "вход ХВС";
+  if(c.type==="tee"){
+    if(port.id==="in") return "вход";
+    return port.id==="out1" ? "выход 1" : "выход 2";
+  }
+  if(port.id==="in") return "вход";
+  if(port.id==="out") return "выход";
+  return port.id;
+}
+
+// Every port left without a pipe is either a dead end that needs a заглушка,
+// or a joint the user just hasn't routed yet — either way, worth a nudge
+// before the scheme is treated as finished (saved, or the spec closed).
+function findOpenPorts(){
+  const list = [];
+  components.forEach(c=>{
+    getPorts(c).forEach(port=>{
+      if(!pipeConnectedTo(c.id, port.id)){
+        list.push({compId:c.id, portId:port.id, name: equipmentDisplayName(c), portLabel: portDisplayLabel(c, port)});
+      }
+    });
+  });
+  return list;
+}
+
 function buildSpecification(){
   const equipment = {}; // display name (incl. size) -> count
   components.forEach(c=>{
-    let name;
-    if(c.type==="manifold") name = `${c.label} (${c.count} отв.)`;
-    else if(c.type==="source") name = c.medium==="hot" ? "Ввод ГВС (от стояка)" : "Ввод ХВС (от стояка)";
-    else if(c.type==="consumer") name = `Потребитель — ${CATALOG.consumer.displayText(c)}`;
-    else if(THREADED_FIXED_TYPES.has(c.type)) name = threadedName(c);
-    else if(CONNECTOR_TYPES.has(c.type)) name = `${CATALOG[c.type].label} - ${threadSizeLabel(c.size)} ${c.thread}`;
-    else name = CATALOG[c.type].label;
-    // Everything except the threaded-fixed group also gets whatever's actually
-    // threaded onto its ports appended — a manifold with outlets in more than
-    // one bore lists every size present, right alongside its outlet count; a
-    // соединитель gets the pipe-clamp side's diameter next to its own thread.
-    if(!THREADED_FIXED_TYPES.has(c.type)){
-      const size = fittingDiameterLabel(c);
-      if(size) name += ` — ${size}`;
-    }
+    const name = equipmentDisplayName(c);
     equipment[name] = (equipment[name]||0) + 1;
   });
 
@@ -2295,17 +2355,33 @@ function specRows(spec){
   return rows;
 }
 
+// Rendered as its own section at the top of the spec, so it's the first thing
+// seen right before saving or closing — the two moments the user is treating
+// the scheme as "done".
+function openPortsSectionHtml(){
+  const openPorts = findOpenPorts();
+  if(!openPorts.length) return "";
+  return `<div class="spec-section">
+    <h3 style="color:var(--hot);">⚠ Незаглушённые порты (${openPorts.length})</h3>
+    <table class="spec-table"><thead><tr><th>Элемент</th><th>Порт</th></tr></thead><tbody>
+      ${openPorts.map(o=>`<tr><td>${escapeAttr(o.name)}</td><td>${escapeAttr(o.portLabel)}</td></tr>`).join("")}
+    </tbody></table>
+    <p class="spec-note" style="border-color:var(--hot);">На коллекторах и прочей арматуре у каждого свободного порта должна быть либо заглушка, либо продолжение трассы — иначе схема не отражает реальный монтаж.</p>
+  </div>`;
+}
+
 function renderSpecBody(){
   const spec = buildSpecification();
   const rows = specRows(spec);
   const body = document.getElementById("specBody");
+  const openHtml = openPortsSectionHtml();
   if(rows.length===0){
-    body.innerHTML = `<p class="spec-empty">На схеме пока нет элементов — добавьте оборудование и трубы, чтобы получить спецификацию.</p>`;
+    body.innerHTML = openHtml || `<p class="spec-empty">На схеме пока нет элементов — добавьте оборудование и трубы, чтобы получить спецификацию.</p>`;
     return;
   }
   const sections = {};
   rows.forEach(r=>{ (sections[r.section] = sections[r.section]||[]).push(r); });
-  let html = "";
+  let html = openHtml;
   ["Оборудование и арматура","Трубы","Требуется докупить"].forEach(sec=>{
     if(!sections[sec]) return;
     html += `<div class="spec-section"><h3>${sec}</h3><table class="spec-table"><thead><tr><th>Наименование</th><th>Кол-во</th><th>Длина</th></tr></thead><tbody>`;
@@ -2341,6 +2417,18 @@ document.getElementById("specDownloadBtn").onclick = ()=>{
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+// Browsers don't allow a custom message here — they only show their own
+// generic "leave site?" prompt — but firing it at all is still the "before
+// closing" check for the case a keyboard/pipeline check inside the app can't
+// reach: actually closing the tab. Only asked when there's real unfinished
+// business (open ports) on a scheme that has anything in it.
+window.addEventListener("beforeunload", (e)=>{
+  if(components.length===0) return;
+  if(findOpenPorts().length===0) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
 
 /* ============================= INIT ============================= */
 buildPalette();
