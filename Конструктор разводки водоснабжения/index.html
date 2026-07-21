@@ -506,6 +506,7 @@
       <div class="insp-empty" id="inspEmpty">
         Выберите элемент на схеме, чтобы изменить его параметры — или добавьте новый из панели слева.
         <p class="pal-hint" style="margin-top:10px;">Начните с «Ввод ХВС/ГВС» — это труба из стояка. Дальше: счётчик → кран → коллектор → арматура → потребитель.</p>
+        <p class="pal-hint" style="margin-top:6px;">Горячие клавиши: R / Пробел — повернуть, Delete — удалить, Ctrl+C / Ctrl+V — скопировать / вставить, Ctrl+Z — отменить, Ctrl+колесо мыши — масштаб.</p>
         <div class="legend">
           <div class="palette-title">Условные обозначения</div>
           <div class="legend-row"><span class="legend-swatch" style="background:var(--hot)"></span>Труба ГВС (горячая)</div>
@@ -579,6 +580,52 @@ function scheduleRender(){
   requestAnimationFrame(()=>{ rafScheduled=false; render(); });
 }
 
+/* ============================= HISTORY (undo) ============================= */
+// Ctrl+Z steps back through whole-scheme snapshots — the simplest model that
+// can't drift out of sync with any individual mutation. snapshot() is called
+// once at the START of a user action (before it changes anything), so a drag
+// or an edit-session in a text field collapses into a single undo step instead
+// of one per pixel/keystroke.
+let history = [];
+const HISTORY_LIMIT = 60;
+function snapshot(){
+  history.push(JSON.stringify({components, pipes, uid}));
+  if(history.length > HISTORY_LIMIT) history.shift();
+}
+function undo(){
+  if(!history.length) return;
+  const state = JSON.parse(history.pop());
+  components = state.components; pipes = state.pipes; uid = state.uid;
+  selection = null; pending = null; pendingMouseCm = null;
+  render();
+}
+
+/* ============================= CLIPBOARD (copy/paste) ============================= */
+let clipboard = null; // a plain-object copy of the last-copied component, sans id/position
+function copySelection(){
+  if(!selection || selection.kind!=="comp") return;
+  const c = findComp(selection.id);
+  if(!c) return;
+  const copy = JSON.parse(JSON.stringify(c));
+  delete copy.id;
+  clipboard = copy;
+  flashHint("Элемент скопирован — Ctrl+V, чтобы вставить.");
+}
+function pasteClipboard(){
+  if(!clipboard) return;
+  snapshot();
+  const c = JSON.parse(JSON.stringify(clipboard));
+  c.id = nextId();
+  // offset from the original so the paste is visibly a new part, not sitting
+  // exactly on top of (and looking like a no-op on) the one it was copied from
+  c.x = (c.x||40) + 12;
+  c.y = (c.y||30) + 12;
+  components.push(c);
+  selection = {kind:"comp", id:c.id};
+  render();
+  flashHint("Элемент вставлен.");
+}
+
 /* ============================= CATALOG ============================= */
 // All geometry in centimeters. dir: 'in' | 'out'. medium: 'hot'|'cold'|null (free) ; fixed:true means never overwritten by propagation.
 
@@ -589,6 +636,79 @@ function rotatePt(dx, dy, rot){
     case 270: return [dy, -dx];
     default:  return [dx, dy];
   }
+}
+
+/* ============================= THREADED FITTINGS ============================= */
+// Nominal pipe-thread sizes (inches) — independent of whatever flexible pipe
+// diameter (mm) happens to be routed to a fitting's ports. ВР = внутренняя
+// резьба (female/internal), НР = наружная резьба (male/external).
+const THREAD_SIZES = ["1/2","3/4","1","1 1/4","1 1/2","2"];
+const THREAD_TYPES = ["ВР","НР"];
+function threadSizeLabel(sz){ return `${sz}"`; }
+// Builds the catalog-style name used both on the canvas tag and in the spec,
+// e.g. "Обратный клапан - 1/2\" ВР-ВР" or "Тройник - 3/4\" ВР-ВР-ВР".
+function threadedName(c){
+  return `${CATALOG[c.type].label} - ${threadSizeLabel(c.size)} ${c.threads.join("-")}`;
+}
+// Shared inspector body for any straight threaded fitting: a size dropdown plus
+// one thread-type control per port. Some real parts only exist in one thread
+// pattern — a nipple is male on both ends by definition, a coupling female on
+// both — those set threadsFixed on the component and get a read-only badge
+// instead of dropdowns, so the model can't represent a part that doesn't exist.
+function threadedFittingInspector(c, refresh, portLabels){
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <label>Размер (резьба)</label>
+      <select id="fSize" style="width:100%;">
+        ${THREAD_SIZES.map(s=>`<option value="${s}" ${c.size===s?"selected":""}>${threadSizeLabel(s)}</option>`).join("")}
+      </select>
+    </div>
+  `;
+  wrap.querySelector("#fSize").onchange = (e)=>{ snapshot(); c.size = e.target.value; refresh(); };
+
+  if(c.threadsFixed){
+    const p = document.createElement("p");
+    p.className = "pal-hint";
+    p.style.marginTop = "8px";
+    p.textContent = `Резьба: ${c.threads.join("-")} — для этой детали не меняется.`;
+    wrap.appendChild(p);
+  } else {
+    c.threads.forEach((t,i)=>{
+      const row = document.createElement("div");
+      row.className = "insp-row";
+      row.style.marginTop = "8px";
+      row.innerHTML = `<label>${portLabels[i]}</label>
+        <select style="width:90px;">${THREAD_TYPES.map(tt=>`<option value="${tt}" ${t===tt?"selected":""}>${tt}</option>`).join("")}</select>`;
+      row.querySelector("select").onchange = (e)=>{ snapshot(); c.threads[i] = e.target.value; refresh(); };
+      wrap.appendChild(row);
+    });
+  }
+  return wrap;
+}
+// Соединитель (euroconus/compression) has ONE threaded end (screws into a
+// fitting or manifold) and one clamp end that grips whatever flexible pipe is
+// routed to it — so it needs its own thread size+type plus, separately, the
+// attached pipe's diameter (which buildSpecification reads off the pipe itself
+// via fittingDiameterLabel, same as any other fitting).
+function connectorInspector(c, refresh){
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <label>Размер резьбы</label>
+      <select id="fSize" style="width:100%;">
+        ${THREAD_SIZES.map(s=>`<option value="${s}" ${c.size===s?"selected":""}>${threadSizeLabel(s)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="insp-row" style="margin-top:8px;">
+      <label>Тип резьбы</label>
+      <select id="fThread" style="width:90px;">${THREAD_TYPES.map(t=>`<option value="${t}" ${c.thread===t?"selected":""}>${t}</option>`).join("")}</select>
+    </div>
+    <p class="pal-hint">Размер трубы для этого стыка отдельно виден в спецификации — берётся из фактически подключённой трубы.</p>
+  `;
+  wrap.querySelector("#fSize").onchange = (e)=>{ snapshot(); c.size = e.target.value; refresh(); };
+  wrap.querySelector("#fThread").onchange = (e)=>{ snapshot(); c.thread = e.target.value; refresh(); };
+  return wrap;
 }
 
 const CATALOG = {
@@ -675,8 +795,9 @@ const CATALOG = {
           <div id="outletLabelsWrap" style="display:flex;flex-direction:column;gap:5px;width:100%;"></div>
         </div>
       `;
-      wrap.querySelector('[data-act="inc"]').onclick=()=>{ if(c.count<12){c.count++; pruneOrphanPipes(); refresh();} };
-      wrap.querySelector('[data-act="dec"]').onclick=()=>{ if(c.count>2){c.count--; pruneOrphanPipes(); refresh();} };
+      wrap.querySelector('[data-act="inc"]').onclick=()=>{ if(c.count<12){ snapshot(); c.count++; pruneOrphanPipes(); refresh();} };
+      wrap.querySelector('[data-act="dec"]').onclick=()=>{ if(c.count>2){ snapshot(); c.count--; pruneOrphanPipes(); refresh();} };
+      wrap.querySelector('#fLabel').onfocus=()=>snapshot();
       wrap.querySelector('#fLabel').oninput=(e)=>{ c.label=e.target.value; refresh("stage"); };
 
       const olWrap = wrap.querySelector('#outletLabelsWrap');
@@ -685,7 +806,9 @@ const CATALOG = {
         row.style.cssText = "display:flex;align-items:center;gap:6px;";
         row.innerHTML = `<span style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-soft);width:14px;flex:none;">${i+1}</span>
           <input type="text" data-idx="${i}" value="${escapeAttr(c.outletLabels[i]||"")}" placeholder="например, кухня" style="flex:1;min-width:0;">`;
-        row.querySelector('input').oninput = (e)=>{ c.outletLabels[i] = e.target.value; refresh("stage"); };
+        const inp = row.querySelector('input');
+        inp.onfocus = ()=>snapshot();
+        inp.oninput = (e)=>{ c.outletLabels[i] = e.target.value; refresh("stage"); };
         olWrap.appendChild(row);
       }
       return wrap;
@@ -892,10 +1015,10 @@ const CATALOG = {
   },
 
   connector: {
-    label: "Соединитель (евроконус)",
+    label: "Соединитель прямой",
     group: "Арматура",
     footprint:()=>({w:6,h:4}),
-    create(){ return {type:"connector", rot:0}; },
+    create(){ return {type:"connector", rot:0, size:"1/2", thread:"НР"}; },
     ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
     draw(c,g){
       g.appendChild(line(-3*PX,0,-1.6*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
@@ -904,7 +1027,113 @@ const CATALOG = {
       g.appendChild(line(-1.1*PX,-1.5*PX,-1.1*PX,1.5*PX,{stroke:"var(--copper-deep)","stroke-width":.8}));
       g.appendChild(el("path",{d:`M 0 ${-1.2*PX} L ${1.2*PX} ${-0.4*PX} L ${1.2*PX} ${0.4*PX} L 0 ${1.2*PX} Z`, fill:"var(--copper)", stroke:"var(--copper-deep)","stroke-width":1}));
       g.appendChild(text(0, -2.6*PX, "соединитель", labelAttrs()));
-    }
+    },
+    inspector(c, refresh){ return connectorInspector(c, refresh); }
+  },
+
+  connector_angle: {
+    label: "Соединитель угловой",
+    group: "Арматура",
+    footprint:()=>({w:6,h:6}),
+    create(){ return {type:"connector_angle", rot:0, size:"1/2", thread:"НР"}; },
+    ports(){ return [
+      {id:"in",dx:-3,dy:0,dir:"in",medium:null},
+      {id:"out",dx:0,dy:3,dir:"out",medium:null},
+    ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.5*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(0,1.5*PX,0,3*PX,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(el("path",{d:`M ${-1.5*PX} 0 Q 0 0 0 ${1.5*PX}`, fill:"none", stroke:"var(--ink-soft)","stroke-width":2.6, "stroke-linecap":"round"}));
+      g.appendChild(rect(-1.3*PX,-1.3*PX,1.9*PX,1.9*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.1, rx:1}));
+      g.appendChild(el("path",{d:`M ${-0.6*PX} ${-0.9*PX} L ${0.7*PX} ${-0.2*PX} L ${0.7*PX} ${0.5*PX} L ${-0.6*PX} ${0.9*PX} Z`, fill:"var(--copper)", stroke:"var(--copper-deep)","stroke-width":.8}));
+      g.appendChild(text(0, -2.7*PX, "соед. угловой", labelAttrs()));
+    },
+    inspector(c, refresh){ return connectorInspector(c, refresh); }
+  },
+
+  checkvalve: {
+    label: "Обратный клапан",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"checkvalve", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.8*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.8*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(circle(0,0,1.8*PX,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.4}));
+      // one-way arrow-and-seat glyph (—▷|—), the standard check-valve symbol,
+      // pointing from "in" to "out"
+      g.appendChild(el("path",{d:`M ${-1.1*PX} ${-1*PX} L ${0.6*PX} 0 L ${-1.1*PX} ${1*PX} Z`, fill:"var(--ink)"}));
+      g.appendChild(line(1*PX,-1.1*PX,1*PX,1.1*PX,{stroke:"var(--ink)","stroke-width":1.3}));
+      g.appendChild(text(0,-3.2*PX,"обр. клапан",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  reducer: {
+    label: "Редуктор давления",
+    group: "Арматура",
+    footprint:()=>({w:6,h:7}),
+    create(){ return {type:"reducer", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:1.5,dir:"in",medium:null}, {id:"out",dx:3,dy:1.5,dir:"out",medium:null} ]; },
+    draw(c,g){
+      const y=1.5*PX;
+      g.appendChild(line(-3*PX,y,-1.8*PX,y,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.8*PX,y,3*PX,y,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(rect(-1.8*PX,y-1.4*PX,3.6*PX,2.8*PX,{fill:"var(--copper-tint)",stroke:"var(--copper-deep)","stroke-width":1.2,rx:2}));
+      // adjustment stem + knob on top — the regulator's tell
+      g.appendChild(line(0,y-1.4*PX,0,y-3.6*PX,{stroke:"var(--copper-deep)","stroke-width":1.4}));
+      g.appendChild(circle(0,y-4*PX,.8*PX,{fill:"var(--copper-deep)"}));
+      g.appendChild(text(0,y-5.4*PX,"редуктор",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  nipple: {
+    label: "Ниппель",
+    group: "Соединения",
+    footprint:()=>({w:5,h:3}),
+    create(){ return {type:"nipple", rot:0, size:"1/2", threads:["НР","НР"], threadsFixed:true}; },
+    ports(){ return [ {id:"in",dx:-2.5,dy:0,dir:"in",medium:null}, {id:"out",dx:2.5,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-2.5*PX,0,2.5*PX,0,{stroke:"var(--ink)","stroke-width":2.6}));
+      for(let x=-2.1;x<=2.1;x+=0.75) g.appendChild(line(x*PX,-0.6*PX,x*PX,0.6*PX,{stroke:"var(--ink)","stroke-width":.9}));
+      g.appendChild(text(0,-2.2*PX,"ниппель",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, []); }
+  },
+
+  coupling: {
+    label: "Муфта",
+    group: "Соединения",
+    footprint:()=>({w:5,h:3}),
+    create(){ return {type:"coupling", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:true}; },
+    ports(){ return [ {id:"in",dx:-2.5,dy:0,dir:"in",medium:null}, {id:"out",dx:2.5,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-2.5*PX,0,-1.6*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(line(1.6*PX,0,2.5*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(rect(-1.6*PX,-1.1*PX,3.2*PX,2.2*PX,{fill:"var(--copper-tint)",stroke:"var(--copper-deep)","stroke-width":1.2,rx:3}));
+      g.appendChild(text(0,-2.2*PX,"муфта",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, []); }
+  },
+
+  barrel: {
+    label: "Бочонок",
+    group: "Соединения",
+    footprint:()=>({w:5,h:3}),
+    create(){ return {type:"barrel", rot:0, size:"1/2", threads:["НР","НР"], threadsFixed:true}; },
+    ports(){ return [ {id:"in",dx:-2.5,dy:0,dir:"in",medium:null}, {id:"out",dx:2.5,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-2.5*PX,0,-1*PX,0,{stroke:"var(--ink)","stroke-width":2.4}));
+      g.appendChild(line(1*PX,0,2.5*PX,0,{stroke:"var(--ink)","stroke-width":2.4}));
+      g.appendChild(line(-2.2*PX,-0.5*PX,-2.2*PX,0.5*PX,{stroke:"var(--ink)","stroke-width":.9}));
+      g.appendChild(line(2.2*PX,-0.5*PX,2.2*PX,0.5*PX,{stroke:"var(--ink)","stroke-width":.9}));
+      // hex wrench-flat bulge in the middle, distinguishing it from a plain nipple
+      g.appendChild(el("path",{d:`M ${-1*PX} ${-0.9*PX} L ${1*PX} ${-0.9*PX} L ${1.4*PX} 0 L ${1*PX} ${0.9*PX} L ${-1*PX} ${0.9*PX} L ${-1.4*PX} 0 Z`, fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.1}));
+      g.appendChild(text(0,-2.2*PX,"бочонок",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, []); }
   },
 
   consumer: {
@@ -939,7 +1168,8 @@ const CATALOG = {
         </div>
         <p class="pal-hint">Если имя задано, на схеме показывается оно вместо типа.</p>
       `;
-      wrap.querySelector("#fType").onchange = (e)=>{ c.label = e.target.value; refresh(); };
+      wrap.querySelector("#fType").onchange = (e)=>{ snapshot(); c.label = e.target.value; refresh(); };
+      wrap.querySelector("#fName").onfocus = ()=>snapshot();
       wrap.querySelector("#fName").oninput = (e)=>{ c.name = e.target.value; refresh("stage"); };
       return wrap;
     }
@@ -1137,7 +1367,7 @@ function insertWaypointNearest(pipe, cm){
 // Fittings that can be spliced into the middle of an already-routed pipe —
 // anything with a simple through-flow (in → out), including the tee, whose
 // spare branch (out2) is left free for the user to run a new line from.
-const SPLICE_TYPES = ["tee","strainer","valve","union","meter","finefilter","leakvalve","hammer"];
+const SPLICE_TYPES = ["tee","strainer","valve","union","meter","finefilter","leakvalve","hammer","checkvalve","reducer","nipple","coupling","barrel","connector"];
 
 // Picks where along a pipe's route to cut it: the longest straight leg (every
 // user-placed hop is already a straight line at whatever angle it was drawn), so
@@ -1171,6 +1401,7 @@ function spliceIntoPipe(pipe, type){
   const split = pickSplitHop(pts);
   if(split.hopIndex < 0) return;
 
+  snapshot();
   const newComp = CATALOG[type].create();
   newComp.id = nextId();
   newComp.x = split.mid.x; newComp.y = split.mid.y;
@@ -1190,6 +1421,7 @@ function spliceIntoPipe(pipe, type){
   selection = {kind:"comp", id:newComp.id};
 }
 function removeComponent(id){
+  snapshot();
   pipes = pipes.filter(p => p.a.compId!==id && p.b.compId!==id);
   components = components.filter(c=>c.id!==id);
 }
@@ -1441,9 +1673,9 @@ function renderInspector(){
           <button class="btn" id="clearRouteBtn" ${turns?"":"disabled"}>Спрямить трассу</button>
           <button class="btn danger" id="delPipeBtn">✕ Удалить трубу</button>
         </div>`;
-      content.querySelector("#fDiam").onchange = (e)=>{ pipe.diameter = +e.target.value; lastPipeDiameter = pipe.diameter; render(); };
-      content.querySelector("#clearRouteBtn").onclick = ()=>{ pipe.waypoints = []; render(); };
-      content.querySelector("#delPipeBtn").onclick = ()=>{ pipes = pipes.filter(p=>p.id!==selection.id); selection=null; render(); };
+      content.querySelector("#fDiam").onchange = (e)=>{ snapshot(); pipe.diameter = +e.target.value; lastPipeDiameter = pipe.diameter; render(); };
+      content.querySelector("#clearRouteBtn").onclick = ()=>{ snapshot(); pipe.waypoints = []; render(); };
+      content.querySelector("#delPipeBtn").onclick = ()=>{ snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); selection=null; render(); };
 
       const spliceGrid = content.querySelector("#spliceGrid");
       SPLICE_TYPES.forEach(type=>{
@@ -1486,7 +1718,7 @@ function renderInspector(){
   actions.className = "insp-actions";
   actions.innerHTML = `<button class="btn" id="btnRotIns">⟲ Повернуть 90°</button><button class="btn danger" id="btnDelIns">✕ Удалить элемент</button>`;
   content.appendChild(actions);
-  actions.querySelector("#btnRotIns").onclick = ()=>{ c.rot = ((c.rot||0)+90)%360; render(); };
+  actions.querySelector("#btnRotIns").onclick = ()=>{ snapshot(); c.rot = ((c.rot||0)+90)%360; render(); };
   actions.querySelector("#btnDelIns").onclick = ()=>{ removeComponent(c.id); selection=null; render(); };
 }
 
@@ -1518,12 +1750,18 @@ const PALETTE_DEF = [
     {type:"tee", label:"Тройник", sub:"1 вход → 2 выхода"},
     {type:"elbow", label:"Отвод (угол 90°)", sub:"поворот трассы"},
     {type:"plug", label:"Заглушка", sub:"глушит порт"},
+    {type:"nipple", label:"Ниппель", sub:"резьба НР-НР"},
+    {type:"coupling", label:"Муфта", sub:"резьба ВР-ВР"},
+    {type:"barrel", label:"Бочонок", sub:"резьба НР-НР, с гранью под ключ"},
   ]},
   {group:"Арматура", items:[
     {type:"strainer", label:"Косой фильтр", sub:"грубая очистка"},
     {type:"valve", label:"Запорный кран", sub:"шаровый, перекрывает"},
+    {type:"checkvalve", label:"Обратный клапан", sub:"пропускает поток в одну сторону"},
+    {type:"reducer", label:"Редуктор давления", sub:"понижает давление"},
     {type:"union", label:"Сгон", sub:"разъёмное соединение"},
-    {type:"connector", label:"Соединитель (евроконус)", sub:"стык трубы с коллектором"},
+    {type:"connector", label:"Соединитель прямой", sub:"резьба + стык с трубой"},
+    {type:"connector_angle", label:"Соединитель угловой", sub:"резьба + стык с трубой, 90°"},
     {type:"meter", label:"Счётчик воды", sub:"учёт расхода"},
     {type:"finefilter", label:"Фильтр тонкой очистки", sub:"картридж"},
     {type:"leakvalve", label:"Кран с защитой от протечек", sub:"аварийное перекрытие"},
@@ -1564,6 +1802,7 @@ function buildPalette(){
 }
 
 function addComponent(type, medium){
+  snapshot();
   const def = CATALOG[type];
   const c = medium ? def.create(medium) : def.create();
   c.id = nextId();
@@ -1623,6 +1862,7 @@ stage.addEventListener("pointerdown", (evt)=>{
 
   if(kind==="waypoint"){
     if(pending) return;
+    snapshot();
     const pipeId = target.dataset.pipeId, idx = +target.dataset.wpIndex;
     dragWaypoint = {pipeId, index: idx};
     selection = {kind:"pipe", id: pipeId};
@@ -1667,7 +1907,10 @@ stage.addEventListener("pointermove", (evt)=>{
     const snap = document.getElementById("snapChk").checked;
     if(snap){ nx = Math.round(nx/5)*5; ny = Math.round(ny/5)*5; }
     nx = Math.max(8, nx); ny = Math.max(8, ny);
-    if(Math.abs(nx-c.x) > 0.01 || Math.abs(ny-c.y) > 0.01) drag.moved = true;
+    if(Math.abs(nx-c.x) > 0.01 || Math.abs(ny-c.y) > 0.01){
+      if(!drag.moved) snapshot(); // one snapshot for the whole drag, taken at its first actual movement
+      drag.moved = true;
+    }
     c.x = nx; c.y = ny;
     scheduleRender();
     return;
@@ -1679,6 +1922,7 @@ stage.addEventListener("pointermove", (evt)=>{
     if(dist > 0.6){
       const pipe = pipes.find(p=>p.id===pipeDragCandidate.pipeId);
       if(pipe){
+        snapshot();
         const idx = insertWaypointNearest(pipe, pipeDragCandidate.startCm);
         if(idx>=0){ dragWaypoint = {pipeId: pipe.id, index: idx}; selection = {kind:"pipe", id: pipe.id}; }
       }
@@ -1737,15 +1981,27 @@ stage.addEventListener("pointerup", (evt)=>{
 });
 
 window.addEventListener("keydown", (e)=>{
+  const inField = document.activeElement && ["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName);
+
+  // Ctrl/Cmd+Z / +C / +V — skipped while a text field has focus so the
+  // browser's own native undo/copy/paste inside that field keeps working
+  // exactly as expected, instead of being hijacked by the scheme-level ones.
+  if((e.ctrlKey||e.metaKey) && !inField){
+    if(e.key==="z"||e.key==="Z"){ e.preventDefault(); undo(); return; }
+    if(e.key==="c"||e.key==="C"){ e.preventDefault(); copySelection(); return; }
+    if(e.key==="v"||e.key==="V"){ e.preventDefault(); pasteClipboard(); return; }
+  }
+
   if(e.key==="Escape" && specOverlay.classList.contains("open")){ specOverlay.classList.remove("open"); return; }
   if(e.key==="Escape"){ pending=null; pendingMouseCm=null; render(); }
   if((e.key==="Delete"||e.key==="Backspace") && selection && document.activeElement.tagName!=="INPUT"){
     e.preventDefault();
     if(selection.kind==="comp"){ removeComponent(selection.id); }
-    else if(selection.kind==="pipe"){ pipes = pipes.filter(p=>p.id!==selection.id); }
+    else if(selection.kind==="pipe"){ snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); }
     selection = null; render();
   }
   if((e.key==="r"||e.key==="R") && selection && selection.kind==="comp" && document.activeElement.tagName!=="INPUT"){
+    snapshot();
     const c = findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); }
   }
   if(e.key===" " && selection && selection.kind==="comp"){
@@ -1755,6 +2011,7 @@ window.addEventListener("keydown", (e)=>{
     const tag = document.activeElement.tagName;
     if(tag!=="INPUT" && tag!=="TEXTAREA" && tag!=="SELECT" && tag!=="BUTTON"){
       e.preventDefault();
+      snapshot();
       const c = findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); }
     }
   }
@@ -1771,6 +2028,7 @@ function tryConnect(a, b){
     flashHint("Этот порт уже подключён. Сначала удалите существующую трубу.");
     return;
   }
+  snapshot();
   pipes.push({ id: nextId(), a:{compId:a.compId, portId:a.portId}, b:{compId:b.compId, portId:b.portId}, waypoints: a.waypoints ? a.waypoints.slice() : [], diameter: lastPipeDiameter });
 }
 
@@ -1788,6 +2046,29 @@ SCALES.forEach((s,i)=>{
 });
 scaleSel.value = 1;
 scaleSel.onchange = ()=>{ PX = SCALES[+scaleSel.value].v; render(); };
+
+// Continuous zoom (Ctrl/Cmd+wheel, or trackpad pinch — browsers report both as
+// a wheel event with ctrlKey set) on top of the discrete scale presets above.
+// A plain wheel/trackpad scroll is left alone so it keeps panning the canvas
+// normally; only the zoom gesture is intercepted, same convention as Figma or
+// Google Maps. Zooms around the cursor so whatever you're pointing at stays
+// under the pointer instead of the view jumping.
+const PX_MIN = 1.5, PX_MAX = 14;
+canvasWrap.addEventListener("wheel", (evt)=>{
+  if(!(evt.ctrlKey || evt.metaKey)) return;
+  evt.preventDefault();
+  const rect = canvasWrap.getBoundingClientRect();
+  const cx = evt.clientX - rect.left + canvasWrap.scrollLeft;
+  const cy = evt.clientY - rect.top + canvasWrap.scrollTop;
+  const oldPX = PX;
+  const newPX = Math.min(PX_MAX, Math.max(PX_MIN, PX * Math.exp(-evt.deltaY * 0.001)));
+  if(newPX === oldPX) return;
+  PX = newPX;
+  render();
+  const scale = newPX / oldPX;
+  canvasWrap.scrollLeft = cx*scale - (evt.clientX - rect.left);
+  canvasWrap.scrollTop = cy*scale - (evt.clientY - rect.top);
+}, {passive:false});
 
 document.querySelectorAll('#unitToggle button').forEach(btn=>{
   btn.onclick = ()=>{
@@ -1812,11 +2093,11 @@ spaceChk.onchange = syncSpaceConstraint;
 spaceWInp.oninput = syncSpaceConstraint;
 spaceHInp.oninput = syncSpaceConstraint;
 
-document.getElementById("btnRotate").onclick = ()=>{ if(selection && selection.kind==="comp"){ const c=findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); } } };
+document.getElementById("btnRotate").onclick = ()=>{ if(selection && selection.kind==="comp"){ snapshot(); const c=findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); } } };
 document.getElementById("btnDelete").onclick = ()=>{
   if(!selection) return;
   if(selection.kind==="comp") removeComponent(selection.id);
-  else pipes = pipes.filter(p=>p.id!==selection.id);
+  else { snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); }
   selection=null; render();
 };
 
@@ -1830,6 +2111,7 @@ document.getElementById("btnLoad").onclick = ()=>{
   if(!raw){ flashHint("Сохранённой схемы не найдено."); return; }
   try{
     const data = JSON.parse(raw);
+    snapshot();
     components = data.components || [];
     pipes = data.pipes || [];
     uid = data.uid || uid;
@@ -1841,6 +2123,7 @@ document.getElementById("btnLoad").onclick = ()=>{
 document.getElementById("btnClear").onclick = ()=>{
   if(components.length===0 && pipes.length===0) return;
   if(confirm("Очистить всю схему? Действие необратимо.")){
+    snapshot();
     components = []; pipes = []; selection=null; pending=null; render();
   }
 };
@@ -1862,6 +2145,15 @@ function fittingDiameterLabel(c){
   return [...dias].sort((a,b)=>a-b).map(diameterLabelFull).join(" / ");
 }
 
+// Threaded fittings (nipples, couplings, check valves, reducers…) are sized by
+// their own nominal thread — not by whatever flexible pipe happens to be routed
+// to their ports — so their spec name comes from threadedName() instead of
+// fittingDiameterLabel(). Соединители are the odd one out: they carry BOTH a
+// threaded end and a pipe-clamp end, so they get their own thread label AND,
+// same as any other fitting, the attached pipe's diameter.
+const THREADED_FIXED_TYPES = new Set(["checkvalve","reducer","nipple","coupling","barrel"]);
+const CONNECTOR_TYPES = new Set(["connector","connector_angle"]);
+
 function buildSpecification(){
   const equipment = {}; // display name (incl. size) -> count
   components.forEach(c=>{
@@ -1869,12 +2161,17 @@ function buildSpecification(){
     if(c.type==="manifold") name = `${c.label} (${c.count} отв.)`;
     else if(c.type==="source") name = c.medium==="hot" ? "Ввод ГВС (от стояка)" : "Ввод ХВС (от стояка)";
     else if(c.type==="consumer") name = `Потребитель — ${CATALOG.consumer.displayText(c)}`;
+    else if(THREADED_FIXED_TYPES.has(c.type)) name = threadedName(c);
+    else if(CONNECTOR_TYPES.has(c.type)) name = `${CATALOG[c.type].label} - ${threadSizeLabel(c.size)} ${c.thread}`;
     else name = CATALOG[c.type].label;
-    // Sizes come from whatever's actually threaded onto each port — a manifold
-    // with outlets in more than one bore lists every size present, right
-    // alongside its own outlet count.
-    const size = fittingDiameterLabel(c);
-    if(size) name += ` — ${size}`;
+    // Everything except the threaded-fixed group also gets whatever's actually
+    // threaded onto its ports appended — a manifold with outlets in more than
+    // one bore lists every size present, right alongside its outlet count; a
+    // соединитель gets the pipe-clamp side's diameter next to its own thread.
+    if(!THREADED_FIXED_TYPES.has(c.type)){
+      const size = fittingDiameterLabel(c);
+      if(size) name += ` — ${size}`;
+    }
     equipment[name] = (equipment[name]||0) + 1;
   });
 
@@ -1901,8 +2198,8 @@ function buildSpecification(){
     const compA=findComp(p.a.compId), compB=findComp(p.b.compId);
     if(!compA||!compB) return;
     const mm = p.diameter||20;
-    if(compA.type==="manifold" && compB.type!=="connector") connectorStats[mm]=(connectorStats[mm]||0)+1;
-    if(compB.type==="manifold" && compA.type!=="connector") connectorStats[mm]=(connectorStats[mm]||0)+1;
+    if(compA.type==="manifold" && !CONNECTOR_TYPES.has(compB.type)) connectorStats[mm]=(connectorStats[mm]||0)+1;
+    if(compB.type==="manifold" && !CONNECTOR_TYPES.has(compA.type)) connectorStats[mm]=(connectorStats[mm]||0)+1;
   });
 
   return {equipment, pipeStats, connectorStats};
