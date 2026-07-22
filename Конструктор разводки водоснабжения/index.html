@@ -1,0 +1,2850 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Конструктор разводки водоснабжения</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --ink:#16262a;
+    --ink-soft:#3c5257;
+    --paper:#eef2f0;
+    --panel:#e3e9e5;
+    --panel-line:#c6d0cb;
+    --line-strong:#aab8b2;
+    --line-faint:#d7ddd9;
+    --copper:#a8571f;
+    --copper-deep:#8a4517;
+    --copper-tint:#f0ddc9;
+    --hot:#c0392b;
+    --hot-soft:#e6a79e;
+    --cold:#2464a8;
+    --cold-soft:#a9c6e6;
+    --ok:#3ee06d;
+    --canvas-bg:#f4f7f5;
+    --canvas-dot:#c3cec8;
+    --wall-edge:#8fa199;
+    --font-ui: -apple-system, "Segoe UI", "Inter", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Roboto Mono", monospace;
+    --font-head: "Segoe UI Semibold", "Segoe UI", -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    --radius: 3px;
+  }
+  :root[data-theme="dark"]{
+    --ink:#e8efec;
+    --ink-soft:#a9bcb8;
+    --paper:#141c1d;
+    --panel:#1b2624;
+    --panel-line:#2c3a37;
+    --line-strong:#3c4d49;
+    --line-faint:#243230;
+    --copper:#d98a49;
+    --copper-deep:#f0a868;
+    --copper-tint:#3a2a1a;
+    --hot:#e2685a;
+    --hot-soft:#5a2b26;
+    --cold:#5a9bdc;
+    --cold-soft:#243c52;
+    --ok:#5fb578;
+    --canvas-bg:#101817;
+    --canvas-dot:#293632;
+    --wall-edge:#3c4d49;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#e8efec;
+      --ink-soft:#a9bcb8;
+      --paper:#141c1d;
+      --panel:#1b2624;
+      --panel-line:#2c3a37;
+      --line-strong:#3c4d49;
+      --line-faint:#243230;
+      --copper:#d98a49;
+      --copper-deep:#f0a868;
+      --copper-tint:#3a2a1a;
+      --hot:#e2685a;
+      --hot-soft:#5a2b26;
+      --cold:#5a9bdc;
+      --cold-soft:#243c52;
+      --ok:#7cf0a3;
+      --canvas-bg:#101817;
+      --canvas-dot:#293632;
+      --wall-edge:#3c4d49;
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-ui);
+    font-size:14px;
+    line-height:1.4;
+  }
+  h1,h2,h3{text-wrap:balance;}
+
+  .app{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    min-height:640px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    padding:10px 16px;
+    background:var(--panel);
+    border-bottom:1px solid var(--panel-line);
+    flex-wrap:wrap;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    margin-right:auto;
+  }
+  .brand-mark{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--copper);
+    border:1px solid var(--copper);
+    border-radius:2px;
+    padding:2px 5px;
+  }
+  .brand h1{
+    font-family:var(--font-head);
+    font-size:16px;
+    font-weight:700;
+    margin:0;
+    letter-spacing:.01em;
+  }
+  .topbar-group{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .topbar-group label{white-space:nowrap;}
+  select, .btn, input[type="text"], input[type="number"]{
+    font-family:var(--font-ui);
+    font-size:12.5px;
+    color:var(--ink);
+    background:var(--paper);
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    padding:5px 9px;
+  }
+  select{cursor:pointer;}
+  input[type="number"]{width:60px;font-variant-numeric:tabular-nums;}
+  .space-x{color:var(--ink-soft);font-size:11px;}
+  .btn{
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    white-space:nowrap;
+    transition:background .12s,border-color .12s;
+  }
+  .btn:hover{border-color:var(--copper);}
+  .btn:active{transform:translateY(1px);}
+  .seg{
+    display:flex;
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .seg button{
+    border:none;
+    background:var(--paper);
+    color:var(--ink-soft);
+    font-family:var(--font-ui);
+    font-size:12px;
+    padding:5px 10px;
+    cursor:pointer;
+  }
+  .seg button + button{border-left:1px solid var(--line-strong);}
+  .seg button.active{background:var(--copper);color:#fff8f0;font-weight:600;}
+  .btn.primary{
+    background:var(--copper);
+    border-color:var(--copper-deep);
+    color:#fff8f0;
+    font-weight:600;
+  }
+  .btn.primary:hover{background:var(--copper-deep);}
+  .btn.danger:hover{border-color:var(--hot);color:var(--hot);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn:disabled:hover{border-color:var(--line-strong);color:var(--ink);}
+
+  /* ---------- Body layout ---------- */
+  .body{
+    flex:1;
+    display:flex;
+    min-height:0;
+  }
+
+  /* ---------- Palette ---------- */
+  .palette{
+    width:238px;
+    flex:none;
+    background:var(--panel);
+    border-right:1px solid var(--panel-line);
+    overflow-y:auto;
+    padding:14px 12px 24px;
+  }
+  .palette-section + .palette-section{margin-top:18px;}
+  .palette-title{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 2px 8px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .palette-title::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:var(--panel-line);
+  }
+  .pal-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    text-align:left;
+    background:var(--paper);
+    border:1px solid var(--panel-line);
+    border-radius:var(--radius);
+    padding:7px 9px;
+    margin-bottom:6px;
+    cursor:pointer;
+    font-size:12.5px;
+    color:var(--ink);
+  }
+  .pal-item:hover{border-color:var(--copper);background:var(--copper-tint);}
+  .pal-item svg{flex:none;}
+  .pal-item .pi-label{display:flex;flex-direction:column;gap:1px;}
+  .pal-item .pi-label b{font-weight:600;font-size:12.5px;}
+  .pal-item .pi-label span{font-size:10.5px;color:var(--ink-soft);}
+  .pal-hint{
+    font-size:11px;
+    color:var(--ink-soft);
+    padding:2px;
+    line-height:1.5;
+  }
+
+  /* ---------- Canvas ---------- */
+  .canvas-wrap{
+    flex:1;
+    position:relative;
+    overflow:auto;
+    background:var(--canvas-bg);
+  }
+  .canvas-wrap svg#stage{display:block;cursor:default;outline:none;}
+  .wall-plate{fill:var(--canvas-bg);}
+  .dot{fill:var(--canvas-dot);}
+
+  .port-hit{cursor:crosshair;}
+  .port-hit:hover circle.port-dot{stroke-width:2.6;}
+
+  .comp-hit{cursor:grab;}
+  .comp-hit:active{cursor:grabbing;}
+
+  .pipe-hit{cursor:pointer;}
+
+  /* ---------- Right inspector ---------- */
+  .inspector{
+    width:252px;
+    flex:none;
+    background:var(--panel);
+    border-left:1px solid var(--panel-line);
+    overflow-y:auto;
+    padding:14px 14px 24px;
+  }
+  .insp-empty{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    line-height:1.6;
+    padding-top:6px;
+  }
+  .insp-title{
+    font-family:var(--font-head);
+    font-size:13.5px;
+    font-weight:700;
+    margin:0 0 2px;
+  }
+  .insp-sub{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+    letter-spacing:.03em;
+  }
+  .insp-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .insp-row label{font-size:12px;color:var(--ink-soft);}
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:0;
+    border:1px solid var(--line-strong);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .stepper button{
+    width:26px;height:26px;
+    border:none;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:15px;
+    cursor:pointer;
+    line-height:1;
+  }
+  .stepper button:hover{background:var(--copper-tint);color:var(--copper-deep);}
+  .stepper output{
+    width:32px;
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:13px;
+    background:var(--paper);
+    border-left:1px solid var(--line-strong);
+    border-right:1px solid var(--line-strong);
+    height:26px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .insp-actions{
+    display:flex;
+    gap:8px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+  .swatch-row{display:flex;gap:6px;}
+  .swatch{
+    width:22px;height:22px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+  }
+  .swatch[data-m="hot"]{background:var(--hot);}
+  .swatch[data-m="cold"]{background:var(--cold);}
+  .swatch.active{border-color:var(--ink);}
+  .legend{
+    margin-top:20px;
+    padding-top:14px;
+    border-top:1px solid var(--panel-line);
+  }
+  .legend-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-soft);margin-bottom:6px;}
+  .legend-swatch{width:16px;height:3px;border-radius:2px;flex:none;}
+
+  /* ---------- Status bar ---------- */
+  .statusbar{
+    display:flex;
+    align-items:center;
+    gap:22px;
+    padding:8px 16px;
+    background:var(--panel);
+    border-top:1px solid var(--panel-line);
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    color:var(--ink-soft);
+    flex-wrap:wrap;
+  }
+  .statusbar b{color:var(--ink);font-weight:600;}
+  .statusbar .sep{width:1px;height:14px;background:var(--panel-line);}
+  .hint-msg{margin-left:auto;color:var(--copper-deep);font-family:var(--font-ui);font-size:12px;}
+
+  ::-webkit-scrollbar{width:11px;height:11px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px;border:3px solid var(--panel);}
+
+  button:focus-visible, select:focus-visible, input:focus-visible, .pal-item:focus-visible{
+    outline:2px solid var(--copper);
+    outline-offset:1px;
+  }
+
+  @media (max-width:880px){
+    .palette{width:180px;}
+    .inspector{width:210px;}
+  }
+
+  /* ---------- Specification modal ---------- */
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(10,14,13,.5);
+    z-index:50;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:6px;
+    width:min(720px, 100%);
+    max-height:min(680px, 100%);
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 12px 40px rgba(0,0,0,.3);
+  }
+  .modal-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  .modal-head h2{margin:0;font-family:var(--font-head);font-size:16px;}
+  .modal-body{padding:18px 20px;overflow-y:auto;flex:1;}
+  .modal-foot{padding:14px 20px;border-top:1px solid var(--panel-line);display:flex;justify-content:flex-end;}
+  .spec-section + .spec-section{margin-top:22px;}
+  .spec-section h3{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 8px;
+  }
+  table.spec-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.spec-table th{
+    text-align:left;
+    font-size:11px;
+    color:var(--ink-soft);
+    font-weight:600;
+    padding:4px 8px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  table.spec-table td{padding:6px 8px;border-bottom:1px solid var(--line-faint);}
+  table.spec-table tr:last-child td{border-bottom:none;}
+  table.spec-table td.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .spec-empty{color:var(--ink-soft);font-size:13px;}
+  .spec-note{
+    margin-top:16px;
+    font-size:12px;
+    color:var(--ink-soft);
+    background:var(--copper-tint);
+    border:1px solid var(--copper);
+    border-radius:4px;
+    padding:9px 11px;
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark">ВК-01</span>
+      <h1>Конструктор разводки водоснабжения</h1>
+    </div>
+
+    <div class="topbar-group">
+      <label for="scaleSel">Масштаб</label>
+      <select id="scaleSel"></select>
+    </div>
+
+    <div class="topbar-group">
+      <button class="btn" id="btnView3D" title="Изометрический вид (только просмотр)">🧊 3D вид</button>
+    </div>
+
+    <div class="topbar-group">
+      <label><input type="checkbox" id="snapChk" checked style="margin-right:5px;">Сетка 5 см</label>
+    </div>
+
+    <div class="topbar-group">
+      <label>Диаметр</label>
+      <div class="seg" id="unitToggle">
+        <button type="button" data-unit="mm" class="active">мм</button>
+        <button type="button" data-unit="inch">дюйм</button>
+      </div>
+    </div>
+
+    <div class="topbar-group">
+      <label><input type="checkbox" id="spaceChk" style="margin-right:5px;">Ограничить место</label>
+      <input type="number" id="spaceW" min="20" max="3000" step="10" value="200" disabled title="Ширина, см">
+      <span class="space-x">×</span>
+      <input type="number" id="spaceH" min="20" max="3000" step="10" value="150" disabled title="Высота, см">
+      <span class="space-x">см</span>
+    </div>
+
+    <div class="topbar-group">
+      <button class="btn" id="btnUndo" title="Ctrl+Z">↩ Отменить</button>
+      <button class="btn" id="btnRotate" title="R или Пробел">⟲ Повернуть</button>
+      <button class="btn" id="btnCopy" title="Ctrl+C">⧉ Копировать</button>
+      <button class="btn" id="btnPaste" title="Ctrl+V">📋 Вставить</button>
+      <button class="btn danger" id="btnDelete" title="Delete">✕ Удалить</button>
+    </div>
+
+    <div class="topbar-group">
+      <button class="btn primary" id="btnSpec">☰ Спецификация</button>
+    </div>
+
+    <div class="topbar-group">
+      <button class="btn" id="btnSave">Сохранить</button>
+      <button class="btn" id="btnLoad">Загрузить</button>
+      <button class="btn danger" id="btnClear">Очистить</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="palette" id="palette"></div>
+
+    <div class="canvas-wrap" id="canvasWrap">
+      <svg id="stage" tabindex="0" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="inspector" id="inspector">
+      <div class="insp-empty" id="inspEmpty">
+        Выберите элемент на схеме, чтобы изменить его параметры — или добавьте новый из панели слева.
+        <p class="pal-hint" style="margin-top:10px;">Начните с «Ввод ХВС/ГВС» — это труба из стояка. Дальше: счётчик → кран → коллектор → арматура → потребитель.</p>
+        <p class="pal-hint" style="margin-top:6px;">Горячие клавиши: R / Пробел — повернуть, Delete — удалить, Ctrl+C / Ctrl+V — скопировать / вставить, Ctrl+Z — отменить, Ctrl+колесо мыши — масштаб. Если клавиши не срабатывают — те же действия есть кнопками наверху («↩ Отменить», «⧉ Копировать», «📋 Вставить», «✕ Удалить»).</p>
+        <div class="legend">
+          <div class="palette-title">Условные обозначения</div>
+          <div class="legend-row"><span class="legend-swatch" style="background:var(--hot)"></span>Труба ГВС (горячая)</div>
+          <div class="legend-row"><span class="legend-swatch" style="background:var(--cold)"></span>Труба ХВС (холодная)</div>
+          <div class="legend-row"><span class="legend-swatch" style="background:var(--line-strong)"></span>Труба без источника</div>
+        </div>
+      </div>
+      <div id="inspContent" style="display:none;"></div>
+    </div>
+  </div>
+
+  <div class="statusbar" id="statusbar">
+    <span>Занимаемая площадь узла: <b id="stArea">—</b></span>
+    <span class="sep"></span>
+    <span>Габариты: <b id="stBbox">—</b></span>
+    <span class="sep"></span>
+    <span>Элементов: <b id="stCount">0</b></span>
+    <span class="sep" id="stFitSep"></span>
+    <span id="stFit" style="display:none;font-weight:600;"></span>
+    <span class="sep" id="stOpenSep" style="display:none;"></span>
+    <span id="stOpen" style="display:none;font-weight:600;color:var(--hot);"></span>
+    <span class="hint-msg" id="hintMsg">Кликните по палубе слева, чтобы добавить элемент на стену.</span>
+  </div>
+</div>
+
+<div class="modal-overlay" id="specOverlay">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h2>Спецификация оборудования</h2>
+      <button class="btn" id="specCloseBtn">✕ Закрыть</button>
+    </div>
+    <div class="modal-body" id="specBody"></div>
+    <div class="modal-foot">
+      <button class="btn primary" id="specDownloadBtn">Скачать CSV</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const SVGNS = "http://www.w3.org/2000/svg";
+const PAD_CM = 40;
+
+/* ============================= STATE ============================= */
+let PX = 4;
+const SCALES = [
+  {v:2.4, label:"Обзор · 1 см = 2.4 px"},
+  {v:4,   label:"Стандарт · 1 см = 4 px"},
+  {v:6,   label:"Крупно · 1 см = 6 px"},
+  {v:9,   label:"Монтаж · 1 см = 9 px"},
+];
+
+let components = [];
+let pipes = [];
+let uid = 1;
+const nextId = () => "n" + (uid++);
+
+let selection = null;   // {kind:'comp'|'pipe', id}
+let pending = null;     // {compId, portId, waypoints:[{x,y}]} — route being traced, awaiting a closing port click
+let pendingMouseCm = null; // live cursor position (cm) while tracing, for the rubber-band preview
+let drag = null;        // active drag state (moving a component)
+let dragWaypoint = null; // active drag state {pipeId, index} — reshaping a pipe's route without touching its port attachments
+let pipeDragCandidate = null; // {pipeId, startCm, moved} — disambiguates a plain click-to-select on a pipe from a drag-to-bend
+let viewMode = "2d"; // '2d' | '3d' — 3D is a read-only isometric projection of the same schematic; all editing stays in 2D
+let hintTimer = null;
+let lastPipeDiameter = 20; // mm — new pipes reuse whatever size was last picked
+let diameterUnit = "mm"; // "mm" | "inch" — display mode only, values always stored in mm
+let spaceConstraint = null; // {w,h} cm, or null — an optional upfront boundary to plan the layout against
+let rafScheduled = false;
+function scheduleRender(){
+  if(rafScheduled) return;
+  rafScheduled = true;
+  requestAnimationFrame(()=>{ rafScheduled=false; render(); });
+}
+
+/* ============================= HISTORY (undo) ============================= */
+// Ctrl+Z steps back through whole-scheme snapshots — the simplest model that
+// can't drift out of sync with any individual mutation. snapshot() is called
+// once at the START of a user action (before it changes anything), so a drag
+// or an edit-session in a text field collapses into a single undo step instead
+// of one per pixel/keystroke.
+let history = [];
+const HISTORY_LIMIT = 60;
+function snapshot(){
+  history.push(JSON.stringify({components, pipes, uid}));
+  if(history.length > HISTORY_LIMIT) history.shift();
+}
+function undo(){
+  if(!history.length){ flashHint("Отменять пока нечего."); return; }
+  const state = JSON.parse(history.pop());
+  components = state.components; pipes = state.pipes; uid = state.uid;
+  selection = null; pending = null; pendingMouseCm = null;
+  render();
+  flashHint("Последнее действие отменено.");
+}
+
+/* ============================= CLIPBOARD (copy/paste) ============================= */
+let clipboard = null; // a plain-object copy of the last-copied component, sans id/position
+function copySelection(){
+  if(!selection || selection.kind!=="comp"){
+    flashHint("Сначала выберите элемент на схеме, чтобы скопировать его.");
+    return;
+  }
+  const c = findComp(selection.id);
+  if(!c) return;
+  const copy = JSON.parse(JSON.stringify(c));
+  delete copy.id;
+  clipboard = copy;
+  flashHint("Элемент скопирован — «Вставить» (или Ctrl+V), чтобы добавить копию.");
+}
+function pasteClipboard(){
+  if(!clipboard){
+    flashHint("Сначала скопируйте элемент («Копировать» или Ctrl+C).");
+    return;
+  }
+  snapshot();
+  const c = JSON.parse(JSON.stringify(clipboard));
+  c.id = nextId();
+  // offset from the original so the paste is visibly a new part, not sitting
+  // exactly on top of (and looking like a no-op on) the one it was copied from
+  c.x = (c.x||40) + 12;
+  c.y = (c.y||30) + 12;
+  components.push(c);
+  selection = {kind:"comp", id:c.id};
+  render();
+  flashHint("Элемент вставлен.");
+}
+
+/* ============================= CATALOG ============================= */
+// All geometry in centimeters. dir: 'in' | 'out'. medium: 'hot'|'cold'|null (free) ; fixed:true means never overwritten by propagation.
+
+function rotatePt(dx, dy, rot){
+  switch(((rot%360)+360)%360){
+    case 90:  return [-dy, dx];
+    case 180: return [-dx, -dy];
+    case 270: return [dy, -dx];
+    default:  return [dx, dy];
+  }
+}
+
+/* ============================= THREADED FITTINGS ============================= */
+// Nominal pipe-thread sizes (inches) — independent of whatever flexible pipe
+// diameter (mm) happens to be routed to a fitting's ports. ВР = внутренняя
+// резьба (female/internal), НР = наружная резьба (male/external).
+const THREAD_SIZES = ["1/2","3/4","1","1 1/4","1 1/2","2"];
+const THREAD_TYPES = ["ВР","НР"];
+function threadSizeLabel(sz){ return `${sz}"`; }
+// Builds the catalog-style name used both on the canvas tag and in the spec,
+// e.g. "Обратный клапан - 1/2\" ВР-ВР" or "Тройник - 3/4\" ВР-ВР-ВР".
+function threadedName(c){
+  return `${CATALOG[c.type].label} - ${threadSizeLabel(c.size)} ${c.threads.join("-")}`;
+}
+// Shared inspector body for any straight threaded fitting: a size dropdown plus
+// one thread-type control per port. Some real parts only exist in one thread
+// pattern — a nipple is male on both ends by definition, a coupling female on
+// both — those set threadsFixed on the component and get a read-only badge
+// instead of dropdowns, so the model can't represent a part that doesn't exist.
+function threadedFittingInspector(c, refresh, portLabels){
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <label>Размер (резьба)</label>
+      <select id="fSize" style="width:100%;">
+        ${THREAD_SIZES.map(s=>`<option value="${s}" ${c.size===s?"selected":""}>${threadSizeLabel(s)}</option>`).join("")}
+      </select>
+    </div>
+  `;
+  wrap.querySelector("#fSize").onchange = (e)=>{ snapshot(); c.size = e.target.value; refresh(); };
+
+  if(c.threadsFixed){
+    const p = document.createElement("p");
+    p.className = "pal-hint";
+    p.style.marginTop = "8px";
+    p.textContent = `Резьба: ${c.threads.join("-")} — для этой детали не меняется.`;
+    wrap.appendChild(p);
+  } else {
+    c.threads.forEach((t,i)=>{
+      const row = document.createElement("div");
+      row.className = "insp-row";
+      row.style.marginTop = "8px";
+      row.innerHTML = `<label>${portLabels[i]}</label>
+        <select style="width:90px;">${THREAD_TYPES.map(tt=>`<option value="${tt}" ${t===tt?"selected":""}>${tt}</option>`).join("")}</select>`;
+      row.querySelector("select").onchange = (e)=>{ snapshot(); c.threads[i] = e.target.value; refresh(); };
+      wrap.appendChild(row);
+    });
+  }
+  return wrap;
+}
+// Соединитель (euroconus/compression) has ONE threaded end (screws into a
+// fitting or manifold) and one clamp end that grips whatever flexible pipe is
+// routed to it — so it needs its own thread size+type plus, separately, the
+// attached pipe's diameter (which buildSpecification reads off the pipe itself
+// via fittingDiameterLabel, same as any other fitting).
+function connectorInspector(c, refresh){
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `
+    <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+      <label>Размер резьбы</label>
+      <select id="fSize" style="width:100%;">
+        ${THREAD_SIZES.map(s=>`<option value="${s}" ${c.size===s?"selected":""}>${threadSizeLabel(s)}</option>`).join("")}
+      </select>
+    </div>
+    <div class="insp-row" style="margin-top:8px;">
+      <label>Тип резьбы</label>
+      <select id="fThread" style="width:90px;">${THREAD_TYPES.map(t=>`<option value="${t}" ${c.thread===t?"selected":""}>${t}</option>`).join("")}</select>
+    </div>
+    <p class="pal-hint">Размер трубы для этого стыка отдельно виден в спецификации — берётся из фактически подключённой трубы.</p>
+  `;
+  wrap.querySelector("#fSize").onchange = (e)=>{ snapshot(); c.size = e.target.value; refresh(); };
+  wrap.querySelector("#fThread").onchange = (e)=>{ snapshot(); c.thread = e.target.value; refresh(); };
+  return wrap;
+}
+
+// Typical real-world footprints (cm) per consumer type, used both as the
+// starting size when a type is picked and to size the on-canvas glyph itself —
+// so a "стиральная машина" actually reads as a much bigger box than a
+// "смеситель" at a glance, not just a differently-labeled identical icon.
+const CONSUMER_DEFAULT_SIZES = {
+  "Смеситель": {w:8, h:8},
+  "Стиральная машина": {w:60, h:60},
+  "Посудомоечная машина": {w:60, h:60},
+  "Унитаз": {w:40, h:65},
+  "Душевая кабина": {w:90, h:90},
+  "Полотенцесушитель": {w:50, h:15},
+};
+
+const CATALOG = {
+
+  manifold: {
+    label: "Коллектор",
+    group: "Узел ввода",
+    defaultSize: () => ({w:10, h:0}), // h computed dynamically
+    create(medium){
+      return { type:"manifold", medium, count:4, rot:0, label: medium==="hot" ? "Коллектор ГВС" : "Коллектор ХВС", outletLabels: [] };
+    },
+    // Keeps outletLabels in lockstep with count (grow with blanks, shrink to fit) —
+    // called defensively so it self-heals both after +/- clicks and for schemes
+    // saved before this field existed.
+    syncOutletLabels(c){
+      if(!Array.isArray(c.outletLabels)) c.outletLabels = [];
+      while(c.outletLabels.length < c.count) c.outletLabels.push("");
+      if(c.outletLabels.length > c.count) c.outletLabels.length = c.count;
+    },
+    footprint(c){ return {w:14, h: 10 + c.count*8}; },
+    // Local layout constants (cm, center-relative) — draw() and ports() both derive
+    // stub/port positions from these so the clickable port always sits exactly on
+    // the drawn stub end, never floating off in empty space.
+    layout(c){
+      const h = CATALOG.manifold.footprint(c).h;
+      const barLeft = -6, barWidth = 8, stubLen = 6;
+      return {
+        h, barLeft, barWidth, stubLen,
+        barRight: barLeft + barWidth,
+        stubEndX: barLeft + barWidth + stubLen,
+        outY: (i)=> -h/2 + 10 + i*8,
+        inY: h/2 - 4,
+        endY: -h/2 + 2, // the bar's far end, opposite the inlet — sits right at the existing end-cap decoration
+      };
+    },
+    ports(c){
+      const L = CATALOG.manifold.layout(c);
+      // "in" feeds the bar from the stack; "end" is the bar's OTHER end — a real
+      // collector isn't threaded shut at the factory, that far end needs either a
+      // заглушка or a continuation (another section, a drain valve, a gauge…), so
+      // it's exposed as an ordinary open port rather than assumed capped.
+      const list = [
+        {id:"in", dx:0, dy: L.inY, dir:"in", medium:c.medium, fixed:true},
+        {id:"end", dx:0, dy: L.endY, dir:"out", medium:c.medium, fixed:true},
+      ];
+      for(let i=0;i<c.count;i++){
+        list.push({id:"out"+i, dx:L.stubEndX, dy: L.outY(i), dir:"out", medium:c.medium, fixed:true});
+      }
+      return list;
+    },
+    draw(c, g){
+      CATALOG.manifold.syncOutletLabels(c);
+      const fp = CATALOG.manifold.footprint(c);
+      const L = CATALOG.manifold.layout(c);
+      const barColor = c.medium==="hot" ? "var(--hot)" : "var(--cold)";
+      const barTop = -fp.h/2*PX + 6*PX, barH = (fp.h-12)*PX;
+      g.appendChild(rect(L.barLeft*PX, barTop, L.barWidth*PX, barH, {fill:barColor, opacity:.85, rx:2}));
+      g.appendChild(rect(L.barLeft*PX-1, barTop-4*PX, (L.barWidth+2)*PX, 4*PX, {fill:"var(--line-strong)", rx:1}));
+      for(let i=0;i<c.count;i++){
+        const y = L.outY(i) * PX;
+        g.appendChild(line(L.barRight*PX, y, L.stubEndX*PX, y, {stroke:barColor,"stroke-width":3.2}));
+        g.appendChild(text(L.barRight*PX-3*PX, y+3.5, String(i+1), {"font-size":9,"fill":"var(--paper)","text-anchor":"middle","font-family":"var(--font-mono)"}));
+        const outletLabel = c.outletLabels[i];
+        if(outletLabel){
+          g.appendChild(text((L.stubEndX+1.2)*PX, y+3, outletLabel, {"font-size":8.5,"fill":"var(--ink-soft)","font-family":"var(--font-ui)"}));
+        }
+      }
+      // inlet stub, a short run down to the "in" port (same length as the outlet stubs)
+      g.appendChild(line(0, (L.inY-L.stubLen)*PX, 0, L.inY*PX, {stroke:"var(--line-strong)","stroke-width":3.2}));
+      g.appendChild(text(L.barLeft*PX+2*PX, (fp.h/2-1)*PX, c.label, {"font-size":10.5,"fill":"var(--ink)","font-family":"var(--font-ui)","font-weight":"600"}));
+      g.appendChild(text(L.barLeft*PX+2*PX, (fp.h/2-1)*PX+12, "вводов: "+c.count, {"font-size":9.5,"fill":"var(--ink-soft)","font-family":"var(--font-mono)"}));
+    },
+    inspector(c, refresh){
+      CATALOG.manifold.syncOutletLabels(c);
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `
+        <div class="insp-row">
+          <label>Кол-во отводов (патрубков)</label>
+          <div class="stepper">
+            <button data-act="dec">–</button>
+            <output>${c.count}</output>
+            <button data-act="inc">+</button>
+          </div>
+        </div>
+        <div class="insp-row">
+          <label>Название</label>
+          <input type="text" id="fLabel" value="${escapeAttr(c.label)}" style="width:130px;">
+        </div>
+        <p class="pal-hint">Мин. 2, макс. 12 отводов. При уменьшении число отводов ниже подключённого — соединения к лишним портам будут удалены.</p>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:4px;">
+          <label>Подписи отводов</label>
+          <div id="outletLabelsWrap" style="display:flex;flex-direction:column;gap:5px;width:100%;"></div>
+        </div>
+        <p class="pal-hint" style="margin-top:8px;${pipeConnectedTo(c.id,"end")?"":"color:var(--hot);"}">
+          ${pipeConnectedTo(c.id,"end")
+            ? "Дальний конец коллектора (порт сверху) подключён."
+            : "⚠ Дальний конец коллектора не заглушён (порт сверху, свободный) — с завода коллектор открыт с обеих сторон. Поставьте туда «Заглушку» либо продолжите трассу дальше."}
+        </p>
+      `;
+      wrap.querySelector('[data-act="inc"]').onclick=()=>{ if(c.count<12){ snapshot(); c.count++; pruneOrphanPipes(); refresh();} };
+      wrap.querySelector('[data-act="dec"]').onclick=()=>{ if(c.count>2){ snapshot(); c.count--; pruneOrphanPipes(); refresh();} };
+      wrap.querySelector('#fLabel').onfocus=()=>snapshot();
+      wrap.querySelector('#fLabel').oninput=(e)=>{ c.label=e.target.value; refresh("stage"); };
+
+      const olWrap = wrap.querySelector('#outletLabelsWrap');
+      for(let i=0;i<c.count;i++){
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:6px;";
+        row.innerHTML = `<span style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-soft);width:14px;flex:none;">${i+1}</span>
+          <input type="text" data-idx="${i}" value="${escapeAttr(c.outletLabels[i]||"")}" placeholder="например, кухня" style="flex:1;min-width:0;">`;
+        const inp = row.querySelector('input');
+        inp.onfocus = ()=>snapshot();
+        inp.oninput = (e)=>{ c.outletLabels[i] = e.target.value; refresh("stage"); };
+        olWrap.appendChild(row);
+      }
+      return wrap;
+    }
+  },
+
+  source: {
+    label: "Ввод (источник)",
+    group: "Узел ввода",
+    footprint:()=>({w:6,h:6}),
+    create(medium){ return {type:"source", medium, rot:0}; },
+    ports(c){ return [ {id:"out", dx:3, dy:0, dir:"out", medium:c.medium, fixed:true} ]; },
+    draw(c,g){
+      const color = c.medium==="hot" ? "var(--hot)" : "var(--cold)";
+      g.appendChild(rect(-3*PX,-3*PX, 1.6*PX, 6*PX, {fill:"var(--line-strong)", stroke:"var(--ink)", "stroke-width":1, rx:1}));
+      for(let i=-1;i<=1;i++) g.appendChild(circle(-2.2*PX, i*1.7*PX, .55*PX, {fill:"var(--ink)"}));
+      g.appendChild(line(-1.4*PX,0, 3*PX,0, {stroke:color, "stroke-width":3.6, "stroke-linecap":"round"}));
+      g.appendChild(el("path", {d:`M ${1.4*PX} ${-1.3*PX} L ${3*PX} 0 L ${1.4*PX} ${1.3*PX}`, fill:"none", stroke:color, "stroke-width":1.8, "stroke-linejoin":"round", "stroke-linecap":"round"}));
+      g.appendChild(text(0,-4.4*PX, c.medium==="hot" ? "ввод ГВС" : "ввод ХВС", labelAttrsBold()));
+      g.appendChild(text(0, 4.8*PX, "от стояка", labelAttrs()));
+    }
+  },
+
+  strainer: {
+    label: "Косой фильтр",
+    group: "Арматура",
+    footprint:()=>({w:6,h:5}),
+    create(){ return {type:"strainer", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.2*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.2*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(circle(0,0,2.1*PX,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.6}));
+      // "slanted" mesh cup hanging below at 45deg, characteristic of a screw-in strainer
+      g.appendChild(el("path",{d:`M ${-1.3*PX} ${0.6*PX} L ${0.4*PX} ${3.4*PX} L ${1.9*PX} ${1.6*PX}`, fill:"var(--panel-line)", stroke:"var(--ink)", "stroke-width":1.1, "stroke-linejoin":"round"}));
+      for(let i=-1;i<=1;i++) g.appendChild(line(-1.5*PX,i*0.8*PX, 1.5*PX, i*0.8*PX, {stroke:"var(--ink)","stroke-width":.7,opacity:.55}));
+      g.appendChild(text(0, -3.4*PX, "фильтр", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  valve: {
+    label: "Запорный кран",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"valve", rot:0, size:"1/2", threads:["ВР","НР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.4*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(el("path",{d:`M ${-1.4*PX} ${-1.3*PX} L ${1.4*PX} ${1.3*PX} L ${1.4*PX} ${-1.3*PX} L ${-1.4*PX} ${1.3*PX} Z`, fill:"var(--ok)", stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(line(0,-2.2*PX,0,2.2*PX,{stroke:"var(--ink)","stroke-width":2.6, "stroke-linecap":"round"}));
+      g.appendChild(text(0, -3.6*PX, "кран", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  meter: {
+    label: "Счётчик воды",
+    group: "Арматура",
+    footprint:()=>({w:6,h:5}),
+    create(){ return {type:"meter", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.9*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.9*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(circle(0,0,2*PX,{fill:"var(--paper)", stroke:"var(--ink)","stroke-width":1.6}));
+      g.appendChild(circle(0,0,1.3*PX,{fill:"none", stroke:"var(--copper)","stroke-width":.8}));
+      for(let i=0;i<8;i++){ const a=i/8*2*Math.PI; g.appendChild(line(Math.cos(a)*1.5*PX,Math.sin(a)*1.5*PX, Math.cos(a)*1.75*PX, Math.sin(a)*1.75*PX, {stroke:"var(--ink)","stroke-width":.7})); }
+      g.appendChild(line(0,0, 0.9*PX, -0.6*PX, {stroke:"var(--copper-deep)","stroke-width":1.2, "stroke-linecap":"round"}));
+      g.appendChild(circle(0,0,.4*PX,{fill:"var(--copper-deep)"}));
+      g.appendChild(text(0, 3.8*PX, "счётчик", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  plug: {
+    label: "Заглушка",
+    group: "Арматура",
+    footprint:()=>({w:3,h:3}),
+    create(){ return {type:"plug", rot:0, size:"1/2", threads:["НР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-1.5,dy:0,dir:"in",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-1.5*PX,0,-0.3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(rect(-0.3*PX,-1.6*PX,1.7*PX,3.2*PX,{fill:"var(--ink)",rx:1}));
+      g.appendChild(text(0, -3*PX, "заглушка", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Резьба"]); }
+  },
+
+  finefilter: {
+    label: "Фильтр тонкой очистки",
+    group: "Арматура",
+    footprint:()=>({w:6,h:9}),
+    create(){ return {type:"finefilter", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:-3,dir:"in",medium:null}, {id:"out",dx:3,dy:-3,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,-3*PX,-1.6*PX,-3*PX,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(line(1.6*PX,-3*PX,3*PX,-3*PX,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(rect(-1.8*PX,-3.8*PX,3.6*PX,1.6*PX,{fill:"var(--copper)",stroke:"var(--copper-deep)","stroke-width":1,rx:1}));
+      g.appendChild(el("path",{d:`M ${-1.5*PX} ${-2.2*PX} L ${-1.7*PX} ${3.6*PX} Q 0 ${4.6*PX} ${1.7*PX} ${3.6*PX} L ${1.5*PX} ${-2.2*PX} Z`, fill:"var(--cold-soft)", stroke:"var(--ink)","stroke-width":1.2}));
+      for(let i=0;i<3;i++) g.appendChild(line(-1.2*PX, (-1+i*1.6)*PX, 1.2*PX, (-1+i*1.6)*PX, {stroke:"var(--ink)","stroke-width":.7,opacity:.5}));
+      g.appendChild(text(0, -5*PX, "тонкая очистка", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  heater: {
+    label: "Водонагреватель",
+    group: "Оборудование",
+    footprint:()=>({w:12,h:14}),
+    create(){ return {type:"heater", rot:0}; },
+    ports(){ return [ {id:"in",dx:-6,dy:5,dir:"in",medium:"cold",fixed:true}, {id:"out",dx:6,dy:5,dir:"out",medium:"hot",fixed:true} ]; },
+    draw(c,g){
+      g.appendChild(line(-6*PX,5*PX,-4.6*PX,5*PX,{stroke:"var(--cold)","stroke-width":2.6}));
+      g.appendChild(line(4.6*PX,5*PX,6*PX,5*PX,{stroke:"var(--hot)","stroke-width":2.6}));
+      g.appendChild(rect(-4.6*PX,-6.5*PX,9.2*PX,11.5*PX,{fill:"var(--copper-tint)",stroke:"var(--ink)","stroke-width":1.4,rx:8}));
+      g.appendChild(circle(0,-1.5*PX,3.2*PX,{fill:"none",stroke:"var(--copper-deep)","stroke-width":1.2,opacity:.6}));
+      // bolt = electric/heat symbol
+      g.appendChild(el("path",{d:`M ${0.6*PX} ${-3.6*PX} L ${-1.2*PX} ${-0.4*PX} L ${0.2*PX} ${-0.4*PX} L ${-0.7*PX} ${2.4*PX} L ${1.6*PX} ${-1.2*PX} L ${0.1*PX} ${-1.2*PX} Z`, fill:"var(--copper-deep)"}));
+      g.appendChild(text(0, 6.5*PX, "водонагреватель", labelAttrs()));
+    }
+  },
+
+  leakvalve: {
+    label: "Кран с защитой от протечек",
+    group: "Арматура",
+    footprint:()=>({w:6,h:5}),
+    create(){ return {type:"leakvalve", rot:0, size:"1/2", threads:["ВР","НР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.4*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(el("path",{d:`M ${-1.4*PX} ${-1.3*PX} L ${1.4*PX} ${1.3*PX} L ${1.4*PX} ${-1.3*PX} L ${-1.4*PX} ${1.3*PX} Z`, fill:"var(--ok)", stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(line(0,-2.2*PX,0,-0.6*PX,{stroke:"var(--ink)","stroke-width":2.4, "stroke-linecap":"round"}));
+      // small drop-shield badge = leak protection sensor
+      g.appendChild(circle(0, -3.6*PX, 1.7*PX, {fill:"var(--paper)", stroke:"var(--ok)", "stroke-width":1.1}));
+      g.appendChild(el("path",{d:`M 0 ${-4.3*PX} q ${0.9*PX} ${1.1*PX} 0 ${1.9*PX} q ${-0.9*PX} ${-0.8*PX} 0 ${-1.9*PX} Z`, fill:"var(--ok)"}));
+      g.appendChild(text(0, 3.6*PX, "аварийный кран", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  hammer: {
+    label: "Датчик гидроудара",
+    group: "Арматура",
+    footprint:()=>({w:6,h:8}),
+    create(){ return {type:"hammer", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:2,dir:"in",medium:null}, {id:"out",dx:3,dy:2,dir:"out",medium:null} ]; },
+    draw(c,g){
+      const lineY = 2*PX;
+      g.appendChild(line(-3*PX,lineY,3*PX,lineY,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(0,lineY,0,-0.6*PX,{stroke:"var(--ink-soft)","stroke-width":2}));
+      g.appendChild(rect(-1*PX,-3.6*PX,2*PX,3.2*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.2, rx:5}));
+      g.appendChild(el("path",{d:`M ${-0.4*PX} ${-3.1*PX} L ${0.3*PX} ${-1.9*PX} L ${-0.2*PX} ${-1.9*PX} L ${0.4*PX} ${-0.6*PX}`, fill:"none", stroke:"var(--copper-deep)","stroke-width":1, "stroke-linejoin":"round","stroke-linecap":"round"}));
+      g.appendChild(text(0, 4.4*PX, "гидроудар", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  tee: {
+    label: "Тройник",
+    group: "Соединения",
+    footprint:()=>({w:6,h:6}),
+    create(){ return {type:"tee", rot:0, size:"1/2", threads:["ВР","ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [
+      {id:"in",dx:-3,dy:0,dir:"in",medium:null},
+      {id:"out1",dx:3,dy:0,dir:"out",medium:null},
+      {id:"out2",dx:0,dy:3,dir:"out",medium:null},
+    ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(line(0,0,0,3*PX,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(circle(0,0,1.5*PX,{fill:"var(--ink-soft)",stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(text(0, -2.6*PX, "тройник", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход 1","Выход 2"]); }
+  },
+
+  elbow: {
+    label: "Отвод (угол 90°)",
+    group: "Соединения",
+    footprint:()=>({w:6,h:6}),
+    create(){ return {type:"elbow", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [
+      {id:"in",dx:-3,dy:0,dir:"in",medium:null},
+      {id:"out",dx:0,dy:3,dir:"out",medium:null},
+    ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.4*PX,0,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(line(0,1.4*PX,0,3*PX,{stroke:"var(--ink-soft)","stroke-width":3}));
+      g.appendChild(el("path",{d:`M ${-1.4*PX} 0 Q 0 0 0 ${1.4*PX}`, fill:"none", stroke:"var(--ink-soft)","stroke-width":3, "stroke-linecap":"round"}));
+      g.appendChild(circle(0,0,1.1*PX,{fill:"var(--ink-soft)",stroke:"var(--ink)","stroke-width":1}));
+      g.appendChild(text(0, -2.6*PX, "отвод", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  union: {
+    label: "Сгон",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"union", rot:0, size:"1/2", threads:["НР","НР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(1*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(rect(-1*PX,-1.7*PX,2*PX,3.4*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.2}));
+      g.appendChild(line(-0.35*PX,-1.7*PX,-0.35*PX,1.7*PX,{stroke:"var(--copper-deep)","stroke-width":1}));
+      g.appendChild(line(0.35*PX,-1.7*PX,0.35*PX,1.7*PX,{stroke:"var(--copper-deep)","stroke-width":1}));
+      g.appendChild(text(0, -2.9*PX, "сгон", labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  connector: {
+    label: "Соединитель прямой",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"connector", rot:0, size:"1/2", thread:"НР"}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.6*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(1.2*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(rect(-1.6*PX,-1.5*PX,1.6*PX,3*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.2}));
+      g.appendChild(line(-1.1*PX,-1.5*PX,-1.1*PX,1.5*PX,{stroke:"var(--copper-deep)","stroke-width":.8}));
+      g.appendChild(el("path",{d:`M 0 ${-1.2*PX} L ${1.2*PX} ${-0.4*PX} L ${1.2*PX} ${0.4*PX} L 0 ${1.2*PX} Z`, fill:"var(--copper)", stroke:"var(--copper-deep)","stroke-width":1}));
+      g.appendChild(text(0, -2.6*PX, "соединитель", labelAttrs()));
+    },
+    inspector(c, refresh){ return connectorInspector(c, refresh); }
+  },
+
+  connector_angle: {
+    label: "Соединитель угловой",
+    group: "Арматура",
+    footprint:()=>({w:6,h:6}),
+    create(){ return {type:"connector_angle", rot:0, size:"1/2", thread:"НР"}; },
+    ports(){ return [
+      {id:"in",dx:-3,dy:0,dir:"in",medium:null},
+      {id:"out",dx:0,dy:3,dir:"out",medium:null},
+    ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.5*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(line(0,1.5*PX,0,3*PX,{stroke:"var(--ink-soft)","stroke-width":2.6}));
+      g.appendChild(el("path",{d:`M ${-1.5*PX} 0 Q 0 0 0 ${1.5*PX}`, fill:"none", stroke:"var(--ink-soft)","stroke-width":2.6, "stroke-linecap":"round"}));
+      g.appendChild(rect(-1.3*PX,-1.3*PX,1.9*PX,1.9*PX,{fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.1, rx:1}));
+      g.appendChild(el("path",{d:`M ${-0.6*PX} ${-0.9*PX} L ${0.7*PX} ${-0.2*PX} L ${0.7*PX} ${0.5*PX} L ${-0.6*PX} ${0.9*PX} Z`, fill:"var(--copper)", stroke:"var(--copper-deep)","stroke-width":.8}));
+      g.appendChild(text(0, -2.7*PX, "соед. угловой", labelAttrs()));
+    },
+    inspector(c, refresh){ return connectorInspector(c, refresh); }
+  },
+
+  checkvalve: {
+    label: "Обратный клапан",
+    group: "Арматура",
+    footprint:()=>({w:6,h:4}),
+    create(){ return {type:"checkvalve", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:0,dir:"in",medium:null}, {id:"out",dx:3,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-3*PX,0,-1.8*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.8*PX,0,3*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(circle(0,0,1.8*PX,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.4}));
+      // one-way arrow-and-seat glyph (—▷|—), the standard check-valve symbol,
+      // pointing from "in" to "out"
+      g.appendChild(el("path",{d:`M ${-1.1*PX} ${-1*PX} L ${0.6*PX} 0 L ${-1.1*PX} ${1*PX} Z`, fill:"var(--ink)"}));
+      g.appendChild(line(1*PX,-1.1*PX,1*PX,1.1*PX,{stroke:"var(--ink)","stroke-width":1.3}));
+      g.appendChild(text(0,-3.2*PX,"обр. клапан",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  reducer: {
+    label: "Редуктор давления",
+    group: "Арматура",
+    footprint:()=>({w:6,h:7}),
+    create(){ return {type:"reducer", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:false}; },
+    ports(){ return [ {id:"in",dx:-3,dy:1.5,dir:"in",medium:null}, {id:"out",dx:3,dy:1.5,dir:"out",medium:null} ]; },
+    draw(c,g){
+      const y=1.5*PX;
+      g.appendChild(line(-3*PX,y,-1.8*PX,y,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(line(1.8*PX,y,3*PX,y,{stroke:"var(--ink-soft)","stroke-width":2.4}));
+      g.appendChild(rect(-1.8*PX,y-1.4*PX,3.6*PX,2.8*PX,{fill:"var(--copper-tint)",stroke:"var(--copper-deep)","stroke-width":1.2,rx:2}));
+      // adjustment stem + knob on top — the regulator's tell
+      g.appendChild(line(0,y-1.4*PX,0,y-3.6*PX,{stroke:"var(--copper-deep)","stroke-width":1.4}));
+      g.appendChild(circle(0,y-4*PX,.8*PX,{fill:"var(--copper-deep)"}));
+      g.appendChild(text(0,y-5.4*PX,"редуктор",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, ["Вход","Выход"]); }
+  },
+
+  nipple: {
+    label: "Ниппель",
+    group: "Соединения",
+    footprint:()=>({w:5,h:3}),
+    create(){ return {type:"nipple", rot:0, size:"1/2", threads:["НР","НР"], threadsFixed:true}; },
+    ports(){ return [ {id:"in",dx:-2.5,dy:0,dir:"in",medium:null}, {id:"out",dx:2.5,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-2.5*PX,0,2.5*PX,0,{stroke:"var(--ink)","stroke-width":2.6}));
+      for(let x=-2.1;x<=2.1;x+=0.75) g.appendChild(line(x*PX,-0.6*PX,x*PX,0.6*PX,{stroke:"var(--ink)","stroke-width":.9}));
+      g.appendChild(text(0,-2.2*PX,"ниппель",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, []); }
+  },
+
+  coupling: {
+    label: "Муфта",
+    group: "Соединения",
+    footprint:()=>({w:5,h:3}),
+    create(){ return {type:"coupling", rot:0, size:"1/2", threads:["ВР","ВР"], threadsFixed:true}; },
+    ports(){ return [ {id:"in",dx:-2.5,dy:0,dir:"in",medium:null}, {id:"out",dx:2.5,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-2.5*PX,0,-1.6*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(line(1.6*PX,0,2.5*PX,0,{stroke:"var(--ink-soft)","stroke-width":2.2}));
+      g.appendChild(rect(-1.6*PX,-1.1*PX,3.2*PX,2.2*PX,{fill:"var(--copper-tint)",stroke:"var(--copper-deep)","stroke-width":1.2,rx:3}));
+      g.appendChild(text(0,-2.2*PX,"муфта",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, []); }
+  },
+
+  barrel: {
+    label: "Бочонок",
+    group: "Соединения",
+    footprint:()=>({w:5,h:3}),
+    create(){ return {type:"barrel", rot:0, size:"1/2", threads:["НР","НР"], threadsFixed:true}; },
+    ports(){ return [ {id:"in",dx:-2.5,dy:0,dir:"in",medium:null}, {id:"out",dx:2.5,dy:0,dir:"out",medium:null} ]; },
+    draw(c,g){
+      g.appendChild(line(-2.5*PX,0,-1*PX,0,{stroke:"var(--ink)","stroke-width":2.4}));
+      g.appendChild(line(1*PX,0,2.5*PX,0,{stroke:"var(--ink)","stroke-width":2.4}));
+      g.appendChild(line(-2.2*PX,-0.5*PX,-2.2*PX,0.5*PX,{stroke:"var(--ink)","stroke-width":.9}));
+      g.appendChild(line(2.2*PX,-0.5*PX,2.2*PX,0.5*PX,{stroke:"var(--ink)","stroke-width":.9}));
+      // hex wrench-flat bulge in the middle, distinguishing it from a plain nipple
+      g.appendChild(el("path",{d:`M ${-1*PX} ${-0.9*PX} L ${1*PX} ${-0.9*PX} L ${1.4*PX} 0 L ${1*PX} ${0.9*PX} L ${-1*PX} ${0.9*PX} L ${-1.4*PX} 0 Z`, fill:"var(--copper-tint)", stroke:"var(--copper-deep)","stroke-width":1.1}));
+      g.appendChild(text(0,-2.2*PX,"бочонок",labelAttrs()));
+    },
+    inspector(c, refresh){ return threadedFittingInspector(c, refresh, []); }
+  },
+
+  consumer: {
+    label: "Потребитель",
+    group: "Потребители",
+    footprint(c){ return {w: c.w||8, h: c.h||8}; },
+    create(){ const d = CONSUMER_DEFAULT_SIZES["Смеситель"]; return {type:"consumer", rot:0, label:"Смеситель", name:"", w:d.w, h:d.h}; },
+    ports(c){
+      const w=c.w||8, h=c.h||8;
+      return [
+        {id:"hot",dx:-w/4,dy:h/2,dir:"in",medium:null,wantHot:true},
+        {id:"cold",dx:w/4,dy:h/2,dir:"in",medium:null,wantCold:true},
+      ];
+    },
+    displayText(c){ return (c.name && c.name.trim()) ? c.name : c.label; },
+    draw(c,g){
+      // Everything below scales off the component's own w/h (cm) instead of
+      // fixed constants, so a "стиральная машина" set to 60×60 actually reads
+      // as a much bigger box than a "смеситель" at 8×8 — real proportions on
+      // the plan, not just a bigger label on an identically-sized icon.
+      const w=c.w||8, h=c.h||8;
+      const hotX=-(w/4)*PX, coldX=(w/4)*PX, bottomY=(h/2)*PX;
+      const bodyHalfW = (w*0.42)*PX, bodyBottom = (h*0.28)*PX, bodyTop = -(h*0.42)*PX;
+      g.appendChild(line(hotX,bottomY,hotX,bodyBottom,{stroke:"var(--hot)","stroke-width":2.2}));
+      g.appendChild(line(coldX,bottomY,coldX,bodyBottom,{stroke:"var(--cold)","stroke-width":2.2}));
+      g.appendChild(rect(-bodyHalfW,bodyTop,bodyHalfW*2,bodyBottom-bodyTop,{fill:"var(--paper)",stroke:"var(--ink)","stroke-width":1.4,rx:2}));
+      const roofHalfW = bodyHalfW*0.7, roofPeak = bodyTop-(h*0.22)*PX;
+      g.appendChild(el("path",{d:`M ${-roofHalfW} ${bodyTop} L 0 ${roofPeak} L ${roofHalfW} ${bodyTop}`, fill:"none", stroke:"var(--ink)","stroke-width":1.4, "stroke-linejoin":"round"}));
+      g.appendChild(text(0, bottomY+11, CATALOG.consumer.displayText(c), labelAttrsBold()));
+    },
+    inspector(c, refresh){
+      const wrap = document.createElement("div");
+      wrap.innerHTML = `
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <label>Тип потребителя</label>
+          <select id="fType" style="width:100%;">
+            ${Object.keys(CONSUMER_DEFAULT_SIZES).map(o=>`<option ${o===c.label?"selected":""}>${o}</option>`).join("")}
+          </select>
+        </div>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:10px;">
+          <label>Имя (по желанию)</label>
+          <input type="text" id="fName" value="${escapeAttr(c.name||"")}" placeholder="например, «Ванная — смеситель»" style="width:100%;">
+        </div>
+        <p class="pal-hint">Если имя задано, на схеме показывается оно вместо типа.</p>
+        <div class="insp-row" style="margin-top:10px;">
+          <label>Ширина, см</label>
+          <input type="number" id="fW" min="5" max="200" step="1" value="${c.w||8}">
+        </div>
+        <div class="insp-row">
+          <label>Глубина, см</label>
+          <input type="number" id="fH" min="5" max="200" step="1" value="${c.h||8}">
+        </div>
+        <p class="pal-hint">Размер элемента на схеме — для наглядной оценки, сколько места займёт техника. Смена типа подставляет типовой размер, дальше его можно поправить вручную.</p>
+      `;
+      wrap.querySelector("#fType").onchange = (e)=>{
+        snapshot();
+        c.label = e.target.value;
+        const d = CONSUMER_DEFAULT_SIZES[c.label];
+        if(d){ c.w = d.w; c.h = d.h; }
+        refresh();
+      };
+      wrap.querySelector("#fName").onfocus = ()=>snapshot();
+      wrap.querySelector("#fName").oninput = (e)=>{ c.name = e.target.value; refresh("stage"); };
+      wrap.querySelector("#fW").onchange = (e)=>{ snapshot(); c.w = Math.max(5, Math.min(200, +e.target.value||8)); refresh(); };
+      wrap.querySelector("#fH").onchange = (e)=>{ snapshot(); c.h = Math.max(5, Math.min(200, +e.target.value||8)); refresh(); };
+      return wrap;
+    }
+  },
+};
+
+function labelAttrs(){ return {"font-size":9,"fill":"var(--ink-soft)","text-anchor":"middle","font-family":"var(--font-mono)"}; }
+function labelAttrsBold(){ return {"font-size":10,"fill":"var(--ink)","text-anchor":"middle","font-family":"var(--font-ui)","font-weight":"600"}; }
+
+/* ============================= DOM HELPERS ============================= */
+function el(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function rect(x,y,w,h,attrs){ return el("rect", Object.assign({x,y,width:w,height:h}, attrs||{})); }
+function circle(cx,cy,r,attrs){ return el("circle", Object.assign({cx,cy,r}, attrs||{})); }
+function line(x1,y1,x2,y2,attrs){ return el("line", Object.assign({x1,y1,x2,y2}, attrs||{})); }
+// Every catalog draw() runs inside a <g rotate(drawRot)> for the component being
+// drawn. A label written straight into that group would tip over sideways/upside
+// down whenever the component itself is rotated — so text() counter-rotates each
+// label about its own anchor point, canceling the ancestor rotation and keeping
+// every caption level and readable no matter how the part is turned.
+let drawRot = 0;
+function text(x,y,str,attrs){
+  const a = Object.assign({}, attrs||{});
+  const r = ((drawRot%360)+360)%360;
+  if(r !== 0) a.transform = `rotate(${-r} ${x} ${y})`;
+  const t = el("text", Object.assign({x,y}, a));
+  t.textContent = str;
+  return t;
+}
+function escapeAttr(s){ return String(s).replace(/"/g,"&quot;"); }
+
+function getPorts(c){ return CATALOG[c.type].ports(c); }
+function getFootprint(c){
+  const fp = c.type==="manifold" ? CATALOG.manifold.footprint(c) : CATALOG[c.type].footprint(c);
+  const s = c.scale || 1;
+  const scaled = {w: fp.w*s, h: fp.h*s};
+  const rot = ((c.rot%360)+360)%360;
+  return (rot===90||rot===270) ? {w:scaled.h, h:scaled.w} : scaled;
+}
+function portWorldCm(c, port){
+  const s = c.scale || 1;
+  const [rdx, rdy] = rotatePt(port.dx*s, port.dy*s, c.rot||0);
+  return {x: c.x + rdx, y: c.y + rdy};
+}
+function findComp(id){ return components.find(c=>c.id===id); }
+function findPort(compId, portId){
+  const c = findComp(compId);
+  if(!c) return null;
+  return getPorts(c).find(p=>p.id===portId) || null;
+}
+
+/* ============================= MEDIUM PROPAGATION ============================= */
+function propagateMedium(){
+  const portMedium = {}; // key compId|portId -> medium
+  function key(cid,pid){ return cid+"|"+pid; }
+
+  components.forEach(c=>{
+    getPorts(c).forEach(p=>{
+      portMedium[key(c.id,p.id)] = p.fixed ? p.medium : null;
+    });
+  });
+
+  let changed = true, iter=0;
+  while(changed && iter < 40){
+    changed = false; iter++;
+    // through pipes
+    pipes.forEach(pipe=>{
+      const ka = key(pipe.a.compId, pipe.a.portId), kb = key(pipe.b.compId, pipe.b.portId);
+      const pa = findPort(pipe.a.compId, pipe.a.portId), pb = findPort(pipe.b.compId, pipe.b.portId);
+      if(!pa || !pb) return;
+      if(portMedium[ka] && !portMedium[kb] && !pb.fixed){ portMedium[kb]=portMedium[ka]; changed=true; }
+      if(portMedium[kb] && !portMedium[ka] && !pa.fixed){ portMedium[ka]=portMedium[kb]; changed=true; }
+    });
+    // through pass-through components (in -> all outs), skip fixed ports (e.g. heater out)
+    components.forEach(c=>{
+      const ports = getPorts(c);
+      const ins = ports.filter(p=>p.dir==="in");
+      const outs = ports.filter(p=>p.dir==="out");
+      ins.forEach(inp=>{
+        const kin = key(c.id, inp.id);
+        if(portMedium[kin]){
+          outs.forEach(o=>{
+            const ko = key(c.id, o.id);
+            if(!portMedium[ko] && !o.fixed){ portMedium[ko]=portMedium[kin]; changed=true; }
+          });
+        }
+      });
+    });
+  }
+  return {portMedium, key};
+}
+
+/* ============================= PIPE / GRAPH UTIL ============================= */
+// Flexible pipe (PEX/metal-plastic) runs straight between wherever the user leads
+// it — any angle, not just horizontal/vertical — and only ever bends with a soft
+// radius, never a sharp corner: a sharp 90° corner is a real fitting joint (see the
+// "Отвод" component), not something loose pipe can do on its own. Each interior
+// waypoint is rounded off with a small fillet; the pipe's actual heading is exactly
+// whatever the user clicked, at whatever angle that was — never straightened,
+// squared off, or auto-routed to something shorter.
+const PIPE_BEND_RADIUS_CM = 3.5;
+function roundedRoutePath(pts){
+  if(pts.length < 2) return "";
+  if(pts.length === 2) return `M ${pts[0].x*PX} ${pts[0].y*PX} L ${pts[1].x*PX} ${pts[1].y*PX}`;
+  let d = `M ${pts[0].x*PX} ${pts[0].y*PX}`;
+  for(let i=1;i<pts.length-1;i++){
+    const prev=pts[i-1], curr=pts[i], next=pts[i+1];
+    const v1x=curr.x-prev.x, v1y=curr.y-prev.y, len1=Math.hypot(v1x,v1y);
+    const v2x=next.x-curr.x, v2y=next.y-curr.y, len2=Math.hypot(v2x,v2y);
+    const r = Math.min(PIPE_BEND_RADIUS_CM, len1/2, len2/2);
+    const p1 = len1>0 ? {x:curr.x-v1x/len1*r, y:curr.y-v1y/len1*r} : curr;
+    const p2 = len2>0 ? {x:curr.x+v2x/len2*r, y:curr.y+v2y/len2*r} : curr;
+    d += ` L ${p1.x*PX} ${p1.y*PX} Q ${curr.x*PX} ${curr.y*PX} ${p2.x*PX} ${p2.y*PX}`;
+  }
+  const last = pts[pts.length-1];
+  d += ` L ${last.x*PX} ${last.y*PX}`;
+  return d;
+}
+// Total real-world length of a route (cm) — plain per-segment distance, since a
+// segment is now a literal straight line at whatever angle the user drew it.
+function routeLengthCm(pts){
+  let len = 0;
+  for(let i=1;i<pts.length;i++) len += Math.hypot(pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y);
+  return len;
+}
+
+// Standard household PPR/metal-plastic pipe bores, mm — stored internally as mm
+// always; "дюйм" is just a display mode mapping each bore to its standard nominal
+// inch designation (DN15↔1/2", DN20↔3/4" …), not a literal unit conversion.
+const PIPE_SIZES = [15, 20, 25, 32, 40];
+const PIPE_INCH_LABELS = {15:'1/2"', 20:'3/4"', 25:'1"', 32:'1 1/4"', 40:'1 1/2"'};
+// Pipe thickness drawn at the SAME cm→px scale as every fitting's footprint
+// (mm → cm → *PX) — not a fixed lookup — so a pipe's on-screen thickness is
+// actually measurable against the ruler and stays correctly proportioned to
+// component sizes at every zoom level, not just at one particular scale.
+function pipeStrokeWidth(mm){ return Math.max(1.6, (mm/10) * PX); }
+// Full label for dropdowns ("⌀ 20 мм" / '⌀ 3/4"') and short label for the on-canvas tag.
+function diameterLabelFull(mm){ return diameterUnit==="inch" ? "⌀ "+(PIPE_INCH_LABELS[mm]||mm+" мм") : "⌀ "+mm+" мм"; }
+function diameterLabelShort(mm){ return diameterUnit==="inch" ? "⌀"+(PIPE_INCH_LABELS[mm]||mm) : "⌀"+mm; }
+
+// A stable, non-overlapping spot to print a pipe's "⌀NN" label: the midpoint of
+// its single longest straight leg.
+function routeLabelAnchor(pts){
+  let bestLen=-1, mid=pts[0];
+  for(let i=1;i<pts.length;i++){
+    const p0=pts[i-1], p1=pts[i];
+    const len = Math.hypot(p1.x-p0.x, p1.y-p0.y);
+    if(len>bestLen){ bestLen=len; mid={x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2}; }
+  }
+  return mid;
+}
+
+function pipeConnectedTo(compId, portId){
+  return pipes.find(p =>
+    (p.a.compId===compId && p.a.portId===portId) ||
+    (p.b.compId===compId && p.b.portId===portId)
+  );
+}
+function pruneOrphanPipes(){
+  pipes = pipes.filter(p=>{
+    const okA = !!findPort(p.a.compId, p.a.portId);
+    const okB = !!findPort(p.b.compId, p.b.portId);
+    return okA && okB;
+  });
+}
+
+function distToSegmentCm(p, a, b){
+  const dx=b.x-a.x, dy=b.y-a.y;
+  const lenSq = dx*dx+dy*dy;
+  if(lenSq===0) return Math.hypot(p.x-a.x, p.y-a.y);
+  let t = ((p.x-a.x)*dx + (p.y-a.y)*dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x-(a.x+t*dx), p.y-(a.y+t*dy));
+}
+// Drops a brand-new waypoint into `pipe` at wherever along its route is nearest
+// to `cm`, without touching either end's port attachment. Returns the index the
+// new point landed at in pipe.waypoints, so the caller can immediately drag it.
+function insertWaypointNearest(pipe, cm){
+  const ca=findComp(pipe.a.compId), cb=findComp(pipe.b.compId);
+  const pa=findPort(pipe.a.compId,pipe.a.portId), pb=findPort(pipe.b.compId,pipe.b.portId);
+  if(!ca||!cb||!pa||!pb) return -1;
+  const wa=portWorldCm(ca,pa), wb=portWorldCm(cb,pb);
+  const pts=[wa, ...(pipe.waypoints||[]), wb];
+  let bestHop=1, bestDist=Infinity;
+  for(let i=1;i<pts.length;i++){
+    const d = distToSegmentCm(cm, pts[i-1], pts[i]);
+    if(d<bestDist){ bestDist=d; bestHop=i; }
+  }
+  const insertAt = bestHop-1;
+  if(!pipe.waypoints) pipe.waypoints = [];
+  pipe.waypoints.splice(insertAt, 0, {x:cm.x, y:cm.y});
+  return insertAt;
+}
+
+// Fittings that can be spliced into the middle of an already-routed pipe —
+// anything with a simple through-flow (in → out), including the tee, whose
+// spare branch (out2) is left free for the user to run a new line from.
+const SPLICE_TYPES = ["tee","strainer","valve","union","meter","finefilter","leakvalve","hammer","checkvalve","reducer","nipple","coupling","barrel","connector"];
+
+// Picks where along a pipe's route to cut it: the longest straight leg (every
+// user-placed hop is already a straight line at whatever angle it was drawn), so
+// the inserted fitting always lands on a run with real room either side of it.
+// Fittings themselves still only rotate in 90° steps, so `horizontal` picks
+// whichever axis that leg leans more toward, purely to orient the new part.
+function pickSplitHop(pts){
+  let hopIndex=-1, bestLen=-1, mid=null, horizontal=true;
+  for(let i=1;i<pts.length;i++){
+    const p0=pts[i-1], p1=pts[i];
+    const dx=p1.x-p0.x, dy=p1.y-p0.y;
+    const legLen = Math.hypot(dx,dy);
+    if(legLen>bestLen){
+      bestLen = legLen; hopIndex = i;
+      horizontal = Math.abs(dx) >= Math.abs(dy);
+      mid = {x:(p0.x+p1.x)/2, y:(p0.y+p1.y)/2};
+    }
+  }
+  return {hopIndex, mid, horizontal};
+}
+
+// Splits `pipe` in two and drops a new `type` fitting at the cut, rewiring both
+// halves (and their share of the original waypoints/diameter) onto it.
+function spliceIntoPipe(pipe, type){
+  const ca = findComp(pipe.a.compId), cb = findComp(pipe.b.compId);
+  const pa = findPort(pipe.a.compId, pipe.a.portId), pb = findPort(pipe.b.compId, pipe.b.portId);
+  if(!ca || !cb || !pa || !pb) return;
+  const wa = portWorldCm(ca, pa), wb = portWorldCm(cb, pb);
+  const waypointsAll = pipe.waypoints || [];
+  const pts = [wa, ...waypointsAll, wb];
+  const split = pickSplitHop(pts);
+  if(split.hopIndex < 0) return;
+
+  snapshot();
+  const newComp = CATALOG[type].create();
+  newComp.id = nextId();
+  newComp.x = split.mid.x; newComp.y = split.mid.y;
+  newComp.rot = split.horizontal ? 0 : 90;
+  components.push(newComp);
+
+  const before = waypointsAll.slice(0, split.hopIndex-1);
+  const after = waypointsAll.slice(split.hopIndex-1);
+  const outPortId = type==="tee" ? "out1" : "out";
+  const sideAPort = pa.dir==="out" ? "in" : outPortId;
+  const sideBPort = pa.dir==="out" ? outPortId : "in";
+
+  const portA = findPort(newComp.id, sideAPort);
+  const portB = findPort(newComp.id, sideBPort);
+  const wPortA = portA ? portWorldCm(newComp, portA) : {x:newComp.x, y:newComp.y};
+  const wPortB = portB ? portWorldCm(newComp, portB) : {x:newComp.x, y:newComp.y};
+
+  // Bend the leg right before the new fitting's port so the final approach
+  // runs along its own axis (horizontal/vertical per split.horizontal) instead
+  // of continuing at the original segment's raw angle — otherwise a fitting
+  // spliced into a diagonal run looks laid on top of the pipe instead of embedded.
+  function alignApproach(waypoints, endPoint, farPoint, prepend){
+    const origin = waypoints.length ? (prepend ? waypoints[0] : waypoints[waypoints.length-1]) : farPoint;
+    const EPS = 0.01;
+    let bend;
+    if(split.horizontal){
+      if(Math.abs(origin.y - endPoint.y) < EPS) return waypoints;
+      bend = {x: origin.x, y: endPoint.y};
+    } else {
+      if(Math.abs(origin.x - endPoint.x) < EPS) return waypoints;
+      bend = {x: endPoint.x, y: origin.y};
+    }
+    return prepend ? [bend, ...waypoints] : [...waypoints, bend];
+  }
+  const beforeAligned = alignApproach(before, wPortA, wa, false);
+  const afterAligned = alignApproach(after, wPortB, wb, true);
+
+  pipes = pipes.filter(p=>p.id!==pipe.id);
+  pipes.push({ id: nextId(), a:{compId:pipe.a.compId, portId:pipe.a.portId}, b:{compId:newComp.id, portId:sideAPort}, waypoints: beforeAligned, diameter: pipe.diameter });
+  pipes.push({ id: nextId(), a:{compId:newComp.id, portId:sideBPort}, b:{compId:pipe.b.compId, portId:pipe.b.portId}, waypoints: afterAligned, diameter: pipe.diameter });
+
+  selection = {kind:"comp", id:newComp.id};
+}
+function removeComponent(id){
+  snapshot();
+  pipes = pipes.filter(p => p.a.compId!==id && p.b.compId!==id);
+  components = components.filter(c=>c.id!==id);
+}
+
+/* ============================= RENDER ============================= */
+const stage = document.getElementById("stage");
+const canvasWrap = document.getElementById("canvasWrap");
+
+function computeSpaceOverflow(b){
+  if(!spaceConstraint || components.length===0) return false;
+  return b.minX < SPACE_ORIGIN_CM.x || b.minY < SPACE_ORIGIN_CM.y ||
+    b.maxX > SPACE_ORIGIN_CM.x+spaceConstraint.w || b.maxY > SPACE_ORIGIN_CM.y+spaceConstraint.h;
+}
+function computeBoundsCm(){
+  if(components.length===0) return {minX:0,minY:0,maxX:200,maxY:140};
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  components.forEach(c=>{
+    const fp = getFootprint(c);
+    minX = Math.min(minX, c.x-fp.w/2);
+    maxX = Math.max(maxX, c.x+fp.w/2);
+    minY = Math.min(minY, c.y-fp.h/2);
+    maxY = Math.max(maxY, c.y+fp.h/2);
+  });
+  return {minX,minY,maxX,maxY};
+}
+
+function render(){
+  renderStageOnly();
+  renderInspector();
+}
+
+/* ============================= 3D (ISOMETRIC) VIEW =============================
+   A read-only isometric projection of the same schematic — no separate data
+   model, no editing. The 2D model has no Z axis at all, so each component gets a
+   rough, schematic "how far it sticks out from the wall" figure per its group,
+   not a modeled real-world dimension. */
+const ISO_COS30 = Math.cos(Math.PI/6), ISO_SIN30 = Math.sin(Math.PI/6);
+const PIPE_ISO_DEPTH_CM = 3; // pipe runs sit close to the wall; fittings poke out further
+function isoProject(x, y, z){
+  return { x: (x - z) * ISO_COS30, y: y + (x + z) * ISO_SIN30 };
+}
+function compDepthCm(c){
+  if(c.type==="heater") return 32;
+  if(c.type==="manifold") return 9;
+  if(c.type==="consumer") return Math.max(6, Math.min(c.h||8, 45)*0.55);
+  const group = CATALOG[c.type].group;
+  if(group==="Узел ввода") return 10;
+  if(group==="Соединения") return 5;
+  return 6.5; // Арматура / Оборудование
+}
+// Builds the SVG matrix() that stands in for the normal translate/rotate/scale
+// group transform, so every catalog type's existing draw(c,g) can be reused
+// verbatim in 3D: it composes the same rotate+scale the 2D view uses with the
+// isometric shear and the component's z-depth offset as a single linear map
+// (matrix a,b,c,d) plus a translation (e,f) — all in one SVG transform.
+function isoGroupTransform(c, depthCm){
+  const s = c.scale || 1, rot = c.rot || 0;
+  const [c1x,c1y] = rotatePt(s,0,rot);
+  const [c2x,c2y] = rotatePt(0,s,rot);
+  const C00 = ISO_COS30*c1x, C01 = ISO_COS30*c2x;
+  const C10 = ISO_SIN30*c1x + c1y, C11 = ISO_SIN30*c2x + c2y;
+  const wx = c.x*PX, wy = c.y*PX, dpx = depthCm*PX;
+  const e = ISO_COS30*(wx - dpx);
+  const f = ISO_SIN30*(wx + dpx) + wy;
+  return `matrix(${C00},${C10},${C01},${C11},${e},${f})`;
+}
+
+function renderIsoStage(){
+  const b = computeBoundsCm();
+  const maxDepth = components.reduce((m,c)=>Math.max(m, compDepthCm(c)), PIPE_ISO_DEPTH_CM);
+  const cornersCm = [ {x:b.minX,y:b.minY},{x:b.maxX,y:b.minY},{x:b.minX,y:b.maxY},{x:b.maxX,y:b.maxY} ];
+  let minPX=Infinity,minPY=Infinity,maxPX=-Infinity,maxPY=-Infinity;
+  cornersCm.forEach(pt=>{
+    [0, maxDepth].forEach(z=>{
+      const proj = isoProject(pt.x, pt.y, z);
+      minPX=Math.min(minPX,proj.x); maxPX=Math.max(maxPX,proj.x);
+      minPY=Math.min(minPY,proj.y); maxPY=Math.max(maxPY,proj.y);
+    });
+  });
+  const padCm = PAD_CM*0.6 + maxDepth;
+  minPX-=padCm; minPY-=padCm; maxPX+=padCm; maxPY+=padCm;
+  const Wpx = Math.max((maxPX-minPX)*PX, 260*PX), Hpx = Math.max((maxPY-minPY)*PX, 180*PX);
+  stage.setAttribute("width", Wpx);
+  stage.setAttribute("height", Hpx);
+  stage.setAttribute("viewBox", `0 0 ${Wpx} ${Hpx}`);
+  stage.innerHTML = "";
+  const originPX = {x:-minPX*PX, y:-minPY*PX};
+  // isoProject() returns cm; roundedRoutePath()/pt*PX expect cm too, so fold the
+  // px origin shift back into cm terms once and reuse it on every projected point.
+  const originCm = {x: originPX.x/PX, y: originPX.y/PX};
+  function isoPtCm(x,y,z){ const p = isoProject(x,y,z); return {x:p.x+originCm.x, y:p.y+originCm.y}; }
+
+  const wallPts = [ {x:b.minX,y:b.minY},{x:b.maxX,y:b.minY},{x:b.maxX,y:b.maxY},{x:b.minX,y:b.maxY} ]
+    .map(pt=>isoPtCm(pt.x,pt.y,0)).map(p=>`${p.x*PX},${p.y*PX}`).join(" ");
+  stage.appendChild(el("polygon",{points:wallPts, class:"wall-plate"}));
+
+  const {portMedium} = propagateMedium();
+
+  const pipeLayer = el("g",{});
+  pipes.forEach(p=>{
+    const ca = findComp(p.a.compId), cb = findComp(p.b.compId);
+    if(!ca||!cb) return;
+    const pa = findPort(p.a.compId,p.a.portId), pb = findPort(p.b.compId,p.b.portId);
+    const wa = portWorldCm(ca,pa), wb = portWorldCm(cb,pb);
+    const medium = portMedium[p.a.compId+"|"+p.a.portId] || portMedium[p.b.compId+"|"+p.b.portId];
+    const color = medium==="hot" ? "var(--hot)" : medium==="cold" ? "var(--cold)" : "var(--line-strong)";
+    if(p.direct){
+      const ptA = isoPtCm(wa.x,wa.y,PIPE_ISO_DEPTH_CM), ptB = isoPtCm(wb.x,wb.y,PIPE_ISO_DEPTH_CM);
+      const d = `M ${ptA.x*PX} ${ptA.y*PX} L ${ptB.x*PX} ${ptB.y*PX}`;
+      pipeLayer.appendChild(el("path",{d, fill:"none", stroke:color, "stroke-width":5.5, "stroke-linecap":"butt"}));
+      return;
+    }
+    const pts = [wa, ...(p.waypoints||[]), wb].map(pt=>isoPtCm(pt.x,pt.y,PIPE_ISO_DEPTH_CM));
+    const d = roundedRoutePath(pts);
+    pipeLayer.appendChild(el("path",{d, fill:"none", stroke:color, "stroke-width":pipeStrokeWidth(p.diameter||20), "stroke-linecap":"round"}));
+  });
+  stage.appendChild(pipeLayer);
+
+  components.forEach(c=>{
+    const def = CATALOG[c.type];
+    const depth = compDepthCm(c);
+    // thin stem + wall-anchor dot showing how far the body pops off the wall
+    const anchor = isoPtCm(c.x, c.y, 0), tip = isoPtCm(c.x, c.y, depth);
+    stage.appendChild(el("line", {x1:anchor.x*PX, y1:anchor.y*PX, x2:tip.x*PX, y2:tip.y*PX, stroke:"var(--line-strong)", "stroke-width":1, "stroke-dasharray":"2 2", opacity:.5}));
+    stage.appendChild(circle(anchor.x*PX, anchor.y*PX, 2.2, {fill:"var(--line-strong)", opacity:.5}));
+
+    const g = el("g", {transform:`translate(${originPX.x},${originPX.y}) ${isoGroupTransform(c, depth)}`});
+    drawRot = c.rot||0;
+    def.draw(c, g);
+    drawRot = 0;
+    stage.appendChild(g);
+  });
+
+  document.getElementById("hintMsg").textContent = "3D-вид (изометрия, только просмотр) — переключитесь в 2D, чтобы редактировать схему.";
+  updateStatusbar(b, computeSpaceOverflow(b));
+}
+
+// Redraws the SVG + status bar without touching the inspector panel's own DOM —
+// used while the user is typing into an inspector text field, so the <input>
+// itself is never destroyed/recreated (which would drop keyboard focus mid-word).
+const SPACE_ORIGIN_CM = {x:20, y:20}; // fixed anchor for the optional space boundary — matches where new parts spawn, so a fresh layout starts inside it
+
+function renderStageOnly(){
+  if(viewMode==="3d"){ renderIsoStage(); return; }
+  const b = computeBoundsCm();
+  let stageWcm = Math.max(b.maxX + PAD_CM*2, 260);
+  let stageHcm = Math.max(b.maxY + PAD_CM*2, 180);
+  if(spaceConstraint){
+    stageWcm = Math.max(stageWcm, SPACE_ORIGIN_CM.x + spaceConstraint.w + PAD_CM);
+    stageHcm = Math.max(stageHcm, SPACE_ORIGIN_CM.y + spaceConstraint.h + PAD_CM);
+  }
+  const Wpx = stageWcm*PX, Hpx = stageHcm*PX;
+  stage.setAttribute("width", Wpx);
+  stage.setAttribute("height", Hpx);
+  stage.setAttribute("viewBox", `0 0 ${Wpx} ${Hpx}`);
+  stage.innerHTML = "";
+
+  // wall background + grid
+  stage.appendChild(rect(0,0,Wpx,Hpx,{class:"wall-plate"}));
+  const grid = el("g", {});
+  const stepCm = 10;
+  for(let x=0; x<=stageWcm; x+=stepCm){
+    for(let y=0; y<=stageHcm; y+=stepCm){
+      grid.appendChild(circle(x*PX, y*PX, 1, {class:"dot"}));
+    }
+  }
+  stage.appendChild(grid);
+
+  // scale bar (50 cm reference)
+  const sbX = 18, sbY = Hpx-22;
+  stage.appendChild(line(sbX, sbY, sbX+50*PX, sbY, {stroke:"var(--ink-soft)","stroke-width":2}));
+  stage.appendChild(line(sbX, sbY-5, sbX, sbY+5, {stroke:"var(--ink-soft)","stroke-width":2}));
+  stage.appendChild(line(sbX+50*PX, sbY-5, sbX+50*PX, sbY+5, {stroke:"var(--ink-soft)","stroke-width":2}));
+  stage.appendChild(text(sbX, sbY-8, "50 см", {"font-size":10,"fill":"var(--ink-soft)","font-family":"var(--font-mono)"}));
+
+  // assembly bbox outline
+  if(components.length){
+    stage.appendChild(rect(b.minX*PX, b.minY*PX, (b.maxX-b.minX)*PX, (b.maxY-b.minY)*PX, {
+      fill:"none", stroke:"var(--copper)", "stroke-width":1, "stroke-dasharray":"4 4", opacity:.55
+    }));
+  }
+
+  // optional upfront space boundary — a planning guide, not a hard limit: parts can
+  // still be dragged past it, but it turns red the moment the layout actually does.
+  let spaceOverflow = false;
+  if(spaceConstraint){
+    spaceOverflow = components.length>0 && (
+      b.minX < SPACE_ORIGIN_CM.x || b.minY < SPACE_ORIGIN_CM.y ||
+      b.maxX > SPACE_ORIGIN_CM.x+spaceConstraint.w || b.maxY > SPACE_ORIGIN_CM.y+spaceConstraint.h
+    );
+    const bx = SPACE_ORIGIN_CM.x*PX, by = SPACE_ORIGIN_CM.y*PX;
+    const bw = spaceConstraint.w*PX, bh = spaceConstraint.h*PX;
+    const boundaryColor = spaceOverflow ? "var(--hot)" : "var(--wall-edge)";
+    stage.appendChild(rect(bx, by, bw, bh, {fill:"none", stroke:boundaryColor, "stroke-width":2.4, "stroke-dasharray": spaceOverflow ? "7 4" : "none", rx:2}));
+    stage.appendChild(text(bx, by-7, `Заданное пространство: ${spaceConstraint.w}×${spaceConstraint.h} см`, {"font-size":10.5,"fill":boundaryColor,"font-family":"var(--font-mono)","font-weight":"600"}));
+  }
+
+  const {portMedium} = propagateMedium();
+
+  // pipes layer
+  const pipeLayer = el("g", {});
+  pipes.forEach(p=>{
+    const ca = findComp(p.a.compId), cb = findComp(p.b.compId);
+    if(!ca||!cb) return;
+    const pa = findPort(p.a.compId, p.a.portId), pb = findPort(p.b.compId, p.b.portId);
+    const wa = portWorldCm(ca, pa), wb = portWorldCm(cb, pb);
+    const medium = portMedium[p.a.compId+"|"+p.a.portId] || portMedium[p.b.compId+"|"+p.b.portId];
+    const color = medium==="hot" ? "var(--hot)" : medium==="cold" ? "var(--cold)" : "var(--line-strong)";
+    const isSel = selection && selection.kind==="pipe" && selection.id===p.id;
+
+    if(p.direct){
+      // Two fittings screwed straight together, not a routed run — a short,
+      // deliberately blunt (not rounded) seam right between the two ports,
+      // with a hex-nut mark instead of a diameter tag: there's no pipe stock
+      // here to size, just the thread the fittings already carry.
+      const d = `M ${wa.x*PX} ${wa.y*PX} L ${wb.x*PX} ${wb.y*PX}`;
+      const hit = el("path", {d, fill:"none", stroke:"transparent", "stroke-width":14, class:"pipe-hit"});
+      hit.dataset.kind="pipe"; hit.dataset.id=p.id;
+      const visible = el("path", {d, fill:"none", stroke:color, "stroke-width": isSel?7:5.5, "stroke-linecap":"butt", "pointer-events":"none"});
+      pipeLayer.appendChild(hit);
+      pipeLayer.appendChild(visible);
+      const mx=(wa.x+wb.x)/2*PX, my=(wa.y+wb.y)/2*PX, hr=4.2*PX;
+      const hexPts = [0,60,120,180,240,300].map(deg=>{
+        const rad = deg*Math.PI/180;
+        return `${mx+hr*Math.cos(rad)},${my+hr*Math.sin(rad)}`;
+      }).join(" ");
+      pipeLayer.appendChild(el("polygon", {points:hexPts, fill:"var(--paper)", stroke:isSel?"var(--copper-deep)":"var(--ink)", "stroke-width":isSel?1.8:1.3, "pointer-events":"none"}));
+      return;
+    }
+
+    const pts = [wa, ...(p.waypoints||[]), wb];
+    const d = roundedRoutePath(pts);
+    const diameter = p.diameter || 20;
+    const hit = el("path", {d, fill:"none", stroke:"transparent", "stroke-width":14, class:"pipe-hit"});
+    hit.dataset.kind="pipe"; hit.dataset.id=p.id;
+    // Painted (stroke≠none) SVG elements intercept pointer events on their own
+    // stroke area by default — so this purely-decorative colored line, drawn on
+    // top of the wide invisible "hit" path for hit-testing, was silently
+    // stealing every click landing exactly on the pipe's visible centerline
+    // (the one spot a user would naturally click) since it carries no
+    // data-kind for the click handler to resolve. pointer-events:none lets
+    // those clicks fall through to the hit path underneath.
+    const visible = el("path", {d, fill:"none", stroke:color, "stroke-width": pipeStrokeWidth(diameter) + (isSel?1.6:0), "stroke-linecap":"round", "pointer-events":"none"});
+    pipeLayer.appendChild(hit);
+    pipeLayer.appendChild(visible);
+    (p.waypoints||[]).forEach((wp,idx)=>{
+      const wg = el("g", {class:"comp-hit"});
+      wg.dataset.kind="waypoint"; wg.dataset.pipeId=p.id; wg.dataset.wpIndex=idx;
+      wg.appendChild(circle(wp.x*PX, wp.y*PX, 8, {fill:"transparent"}));
+      wg.appendChild(circle(wp.x*PX, wp.y*PX, isSel?3.2:2.4, {fill:"var(--paper)", stroke:color, "stroke-width":1.6}));
+      pipeLayer.appendChild(wg);
+    });
+    const anchor = routeLabelAnchor(pts);
+    const lblText = diameterLabelShort(diameter);
+    const lblW = 8 + lblText.length*4.6;
+    pipeLayer.appendChild(rect(anchor.x*PX-lblW/2, anchor.y*PX-16, lblW, 11, {fill:"var(--panel)", stroke:"var(--panel-line)", "stroke-width":isSel?1.2:.8, rx:3, opacity: isSel?1:.9, "pointer-events":"none"}));
+    pipeLayer.appendChild(text(anchor.x*PX, anchor.y*PX-7.7, lblText, {"font-size":8.5, "fill": isSel?"var(--copper-deep)":"var(--ink-soft)", "font-family":"var(--font-mono)", "text-anchor":"middle", "font-weight": isSel?"700":"400", "pointer-events":"none"}));
+  });
+  stage.appendChild(pipeLayer);
+
+  // pending route preview — placed turns (solid) plus a rubber-band segment to the cursor (dashed)
+  if(pending){
+    const c = findComp(pending.compId), port = findPort(pending.compId, pending.portId);
+    if(c && port){
+      const startW = portWorldCm(c, port);
+      const chain = [startW, ...pending.waypoints];
+      const color = port.fixed && port.medium==="hot" ? "var(--hot)" : port.fixed && port.medium==="cold" ? "var(--cold)" : "var(--copper)";
+      if(chain.length>1){
+        stage.appendChild(el("path", {d:roundedRoutePath(chain), fill:"none", stroke:color, "stroke-width":3.4, "stroke-linecap":"round", opacity:.9}));
+      }
+      pending.waypoints.forEach(wp=>{
+        stage.appendChild(rect(wp.x*PX-3, wp.y*PX-3, 6, 6, {fill:color, stroke:"var(--paper)", "stroke-width":1.2}));
+      });
+      if(pendingMouseCm){
+        // A plain straight line to the pointer — not the orthogonal dogleg used for
+        // committed segments. That auto-elbow's "leading" axis flips as the mouse
+        // wobbles near a 45° diagonal, which reads as the pipe randomly changing its
+        // mind. A literal cursor-follow line has no such ambiguity; the orthogonal
+        // bend only gets fixed in place once the user actually clicks a point.
+        const last = chain[chain.length-1];
+        stage.appendChild(el("path", {d:`M ${last.x*PX} ${last.y*PX} L ${pendingMouseCm.x*PX} ${pendingMouseCm.y*PX}`, fill:"none", stroke:color, "stroke-width":2, "stroke-dasharray":"3 3", opacity:.55, "stroke-linecap":"round"}));
+      }
+      stage.appendChild(circle(startW.x*PX, startW.y*PX, 7, {fill:"none", stroke:"var(--copper)", "stroke-width":2, "stroke-dasharray":"3 2"}));
+    }
+  }
+
+  // components layer — bodies first, in a plain single pass...
+  components.forEach(c=>{
+    const def = CATALOG[c.type];
+    const g = el("g", {transform:`translate(${c.x*PX},${c.y*PX}) rotate(${c.rot||0}) scale(${c.scale||1})`, class:"comp-hit"});
+    g.dataset.kind="comp"; g.dataset.id=c.id;
+    drawRot = c.rot||0;
+    def.draw(c, g);
+    drawRot = 0;
+    if(selection && selection.kind==="comp" && selection.id===c.id){
+      const fp = def.type==="manifold" ? CATALOG.manifold.footprint(c) : def.footprint(c);
+      const outline = rect(-fp.w/2*PX-4, -fp.h/2*PX-4, fp.w*PX+8, fp.h*PX+8, {
+        fill:"none", stroke:"var(--copper)", "stroke-width":1.6, "stroke-dasharray":"5 3", rx:4,
+        transform:`rotate(${-(c.rot||0)})`
+      });
+      g.appendChild(outline);
+    }
+    stage.appendChild(g);
+  });
+
+  // ...then EVERY component's ports, in a second pass appended after all bodies.
+  // Two adjacent parts (e.g. a water heater feeding straight into a manifold)
+  // routinely sit close enough that one body's bounding box overlaps the other's
+  // port — with ports interleaved per-component, whichever component came later
+  // in the array would silently paint over and swallow clicks on the earlier
+  // one's port, making that side impossible to hook a pipe onto. Drawing all
+  // ports as their own top layer, after every body, keeps every port clickable
+  // no matter the add order or how tightly parts are packed.
+  components.forEach(c=>{
+    getPorts(c).forEach(port=>{
+      const w = portWorldCm(c, port);
+      const medium = portMedium[c.id+"|"+port.id];
+      const connected = !!pipeConnectedTo(c.id, port.id);
+      const isPending = pending && pending.compId===c.id && pending.portId===port.id;
+      const fill = medium==="hot" ? "var(--hot)" : medium==="cold" ? "var(--cold)" : (connected ? "var(--ink-soft)" : "var(--paper)");
+      const stroke = isPending ? "var(--copper)" : (connected ? "var(--ink)" : "var(--line-strong)");
+      const pg = el("g", {class:"port-hit"});
+      pg.dataset.kind="port"; pg.dataset.compId=c.id; pg.dataset.portId=port.id;
+      pg.appendChild(circle(w.x*PX, w.y*PX, 6, {fill:"transparent"}));
+      pg.appendChild(circle(w.x*PX, w.y*PX, 3.6, {class:"port-dot", fill, stroke, "stroke-width":1.8}));
+      stage.appendChild(pg);
+    });
+  });
+
+  updateStatusbar(b, spaceOverflow);
+}
+
+function updateStatusbar(b, spaceOverflow){
+  const wCm = Math.max(0, b.maxX-b.minX), hCm = Math.max(0, b.maxY-b.minY);
+  const wM = wCm/100, hM = hCm/100;
+  const area = wM*hM;
+  document.getElementById("stArea").textContent = components.length ? `${area.toFixed(2)} м²` : "—";
+  document.getElementById("stBbox").textContent = components.length ? `${wCm.toFixed(0)} × ${hCm.toFixed(0)} см (${wM.toFixed(2)} × ${hM.toFixed(2)} м)` : "—";
+  document.getElementById("stCount").textContent = String(components.length);
+
+  const fitEl = document.getElementById("stFit");
+  const fitSep = document.getElementById("stFitSep");
+  if(spaceConstraint){
+    fitEl.style.display = "";
+    fitSep.style.display = "";
+    if(components.length===0){
+      fitEl.textContent = `Пространство: ${spaceConstraint.w}×${spaceConstraint.h} см`;
+      fitEl.style.color = "var(--ink-soft)";
+    } else if(spaceOverflow){
+      const overW = Math.max(0, wCm - spaceConstraint.w), overH = Math.max(0, hCm - spaceConstraint.h);
+      const overBits = [overW>0.5?`${overW.toFixed(0)} см по ширине`:null, overH>0.5?`${overH.toFixed(0)} см по высоте`:null].filter(Boolean).join(", ");
+      fitEl.textContent = `⚠ превышает ${spaceConstraint.w}×${spaceConstraint.h} см${overBits?" — на "+overBits:""}`;
+      fitEl.style.color = "var(--hot)";
+    } else {
+      fitEl.textContent = `✓ помещается в ${spaceConstraint.w}×${spaceConstraint.h} см`;
+      fitEl.style.color = "var(--ok)";
+    }
+  } else {
+    fitEl.style.display = "none";
+    fitSep.style.display = "none";
+  }
+
+  const openEl = document.getElementById("stOpen");
+  const openSep = document.getElementById("stOpenSep");
+  const openCount = components.length ? findOpenPorts().length : 0;
+  if(openCount){
+    openEl.style.display = ""; openSep.style.display = "";
+    openEl.textContent = `⚠ незаглушено: ${openCount}`;
+  } else {
+    openEl.style.display = "none"; openSep.style.display = "none";
+  }
+}
+
+/* ============================= INSPECTOR ============================= */
+function renderInspector(){
+  const empty = document.getElementById("inspEmpty");
+  const content = document.getElementById("inspContent");
+  if(!selection || selection.kind!=="comp"){
+    empty.style.display = "block"; content.style.display="none";
+    if(selection && selection.kind==="pipe"){
+      const pipe = pipes.find(p=>p.id===selection.id);
+      if(!pipe){ selection=null; return; }
+      empty.style.display = "none"; content.style.display="block";
+
+      if(pipe.direct){
+        // A screwed-together joint has nothing to size or splice — no pipe
+        // stock, no route to bend — so it gets its own minimal panel instead
+        // of the diameter/splice controls a routed pipe shows.
+        const tiA = portThreadInfo(pipe.a.compId, pipe.a.portId), tiB = portThreadInfo(pipe.b.compId, pipe.b.portId);
+        const sizeLabel = tiA ? threadSizeLabel(tiA.size) : "";
+        content.innerHTML = `<h2 class="insp-title">Прямое резьбовое соединение</h2>
+          <p class="insp-sub">${escapeAttr(sizeLabel)} · ${escapeAttr(tiA?tiA.type:"?")} ↔ ${escapeAttr(tiB?tiB.type:"?")}</p>
+          <p class="pal-hint">Фитинги свинчены впритык, без трубы между ними. Чтобы вместо этого проложить трубу — удалите соединение и соедините порты заново, разведя элементы на расстояние.</p>
+          <div class="insp-actions">
+            <button class="btn danger" id="delPipeBtn">✕ Разъединить</button>
+          </div>`;
+        content.querySelector("#delPipeBtn").onclick = ()=>{ snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); selection=null; render(); };
+        return;
+      }
+
+      const turns = (pipe.waypoints||[]).length;
+      content.innerHTML = `<h2 class="insp-title">Труба</h2><p class="insp-sub">соединение · ${turns ? turns+" поворот(а/ов)" : "прямой участок"}</p>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+          <label>Диаметр</label>
+          <select id="fDiam" style="width:100%;">
+            ${PIPE_SIZES.map(mm=>`<option value="${mm}" ${(pipe.diameter||20)===mm?"selected":""}>${diameterLabelFull(mm)}</option>`).join("")}
+          </select>
+        </div>
+        <p class="pal-hint">Труба сама окрашивается по источнику (ГВС/ХВС), к которому в итоге подключена через коллектор.</p>
+        <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:4px;">
+          <label>Вставить в трассу</label>
+          <div id="spliceGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%;"></div>
+          <p class="pal-hint">Труба разрежется в самом длинном прямом участке, и туда встанет выбранный элемент.</p>
+        </div>
+        <div class="insp-actions">
+          <button class="btn" id="clearRouteBtn" ${turns?"":"disabled"}>Спрямить трассу</button>
+          <button class="btn danger" id="delPipeBtn">✕ Удалить трубу</button>
+        </div>`;
+      content.querySelector("#fDiam").onchange = (e)=>{ snapshot(); pipe.diameter = +e.target.value; lastPipeDiameter = pipe.diameter; render(); };
+      content.querySelector("#clearRouteBtn").onclick = ()=>{ snapshot(); pipe.waypoints = []; render(); };
+      content.querySelector("#delPipeBtn").onclick = ()=>{ snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); selection=null; render(); };
+
+      const spliceGrid = content.querySelector("#spliceGrid");
+      SPLICE_TYPES.forEach(type=>{
+        const def = CATALOG[type];
+        const btn = document.createElement("button");
+        btn.className = "pal-item"; btn.type = "button";
+        btn.style.marginBottom = "0";
+        btn.appendChild(paletteIcon(type));
+        const lab = document.createElement("span"); lab.className="pi-label";
+        lab.innerHTML = `<b>${def.label}</b>`;
+        btn.appendChild(lab);
+        btn.onclick = ()=>{ spliceIntoPipe(pipe, type); render(); };
+        spliceGrid.appendChild(btn);
+      });
+    }
+    return;
+  }
+  const c = findComp(selection.id);
+  if(!c){ selection=null; empty.style.display="block"; content.style.display="none"; return; }
+  empty.style.display = "none"; content.style.display = "block";
+  content.innerHTML = "";
+  const def = CATALOG[c.type];
+
+  const h = document.createElement("h2"); h.className="insp-title"; h.textContent = c.label || def.label;
+  const sub = document.createElement("p"); sub.className="insp-sub"; sub.textContent = def.group.toUpperCase() + " · rot " + (c.rot||0) + "°";
+  content.appendChild(h); content.appendChild(sub);
+
+  if(def.inspector){
+    // refresh(true|undefined) = full render (stage+inspector); refresh(false) = inspector only;
+    // refresh("stage") = stage only — the one to use from a text input's oninput, so the
+    // input element itself is never rebuilt and keyboard focus survives each keystroke.
+    content.appendChild(def.inspector(c, (mode=true)=>{
+      if(mode==="stage") renderStageOnly();
+      else if(mode===false) renderInspector();
+      else render();
+    }));
+  }
+
+  // A generic size control for every catalog item — consumers already carry
+  // their own real-world width/depth (they need actual cm to compare against
+  // a room), but plain equipment/arматура has no such notion, so a simple
+  // visual multiplier is what "make it bigger so it reads clearly" means for
+  // a valve, a manifold, a heater. Purely cosmetic: scales the drawn glyph and
+  // its footprint together, ports move with it, but it never changes what the
+  // part actually is or does.
+  if(c.type!=="consumer"){
+    const sizeWrap = document.createElement("div");
+    const pct = Math.round((c.scale||1)*100);
+    sizeWrap.innerHTML = `
+      <div class="insp-row" style="flex-direction:column;align-items:flex-start;gap:6px;margin-top:${def.inspector?10:0}px;">
+        <label>Размер на схеме</label>
+        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+          <input type="range" id="fScale" min="50" max="300" step="10" value="${pct}" style="flex:1;">
+          <output id="fScaleOut" style="font-family:var(--font-mono);font-size:12px;width:40px;text-align:right;flex:none;">${pct}%</output>
+        </div>
+      </div>
+      <p class="pal-hint">Только для наглядности — на подключение труб и параметры детали не влияет.</p>
+    `;
+    content.appendChild(sizeWrap);
+    const scaleInput = sizeWrap.querySelector("#fScale");
+    const scaleOut = sizeWrap.querySelector("#fScaleOut");
+    let scaleSnapshotted = false;
+    scaleInput.oninput = (e)=>{
+      if(!scaleSnapshotted){ snapshot(); scaleSnapshotted = true; }
+      c.scale = (+e.target.value)/100;
+      scaleOut.textContent = e.target.value + "%";
+      renderStageOnly();
+    };
+    scaleInput.onchange = ()=>{ scaleSnapshotted = false; };
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "insp-actions";
+  actions.innerHTML = `<button class="btn" id="btnRotIns">⟲ Повернуть 90°</button><button class="btn" id="btnCopyIns">⧉ Копировать</button><button class="btn danger" id="btnDelIns">✕ Удалить элемент</button>`;
+  content.appendChild(actions);
+  actions.querySelector("#btnRotIns").onclick = ()=>{ snapshot(); c.rot = ((c.rot||0)+90)%360; render(); };
+  actions.querySelector("#btnCopyIns").onclick = ()=> copySelection();
+  actions.querySelector("#btnDelIns").onclick = ()=>{ removeComponent(c.id); selection=null; render(); };
+}
+
+/* ============================= PALETTE ============================= */
+function paletteIcon(type, medium){
+  const svg = el("svg", {width:34, height:28, viewBox:"-17 -14 34 28"});
+  const savedPX = PX; PX_ICON_MODE = true;
+  const g = el("g", {transform:"scale(0.62)"});
+  const fakeC = medium ? {...CATALOG[type].create(medium)} : CATALOG[type].create();
+  fakeC.count = fakeC.count || 3;
+  // draw using icon-scale constant regardless of current PX
+  const iconPX = 3.2;
+  const origPX = PX; PX = iconPX;
+  CATALOG[type].draw(fakeC, g);
+  PX = origPX;
+  svg.appendChild(g);
+  return svg;
+}
+let PX_ICON_MODE = false;
+
+const PALETTE_DEF = [
+  {group:"Узел ввода", items:[
+    {type:"source", medium:"cold", label:"Ввод ХВС", sub:"труба из стояка, холодная"},
+    {type:"source", medium:"hot", label:"Ввод ГВС", sub:"труба из стояка, горячая"},
+    {type:"manifold", medium:"hot", label:"Коллектор ГВС", sub:"вводные патрубки, горячая"},
+    {type:"manifold", medium:"cold", label:"Коллектор ХВС", sub:"вводные патрубки, холодная"},
+  ]},
+  {group:"Соединения", items:[
+    {type:"tee", label:"Тройник", sub:"1 вход → 2 выхода"},
+    {type:"elbow", label:"Отвод (угол 90°)", sub:"поворот трассы"},
+    {type:"plug", label:"Заглушка", sub:"глушит порт"},
+    {type:"nipple", label:"Ниппель", sub:"резьба НР-НР"},
+    {type:"coupling", label:"Муфта", sub:"резьба ВР-ВР"},
+    {type:"barrel", label:"Бочонок", sub:"резьба НР-НР, с гранью под ключ"},
+  ]},
+  {group:"Арматура", items:[
+    {type:"strainer", label:"Косой фильтр", sub:"грубая очистка"},
+    {type:"valve", label:"Запорный кран", sub:"шаровый, перекрывает"},
+    {type:"checkvalve", label:"Обратный клапан", sub:"пропускает поток в одну сторону"},
+    {type:"reducer", label:"Редуктор давления", sub:"понижает давление"},
+    {type:"union", label:"Сгон", sub:"разъёмное соединение"},
+    {type:"connector", label:"Соединитель прямой", sub:"резьба + стык с трубой"},
+    {type:"connector_angle", label:"Соединитель угловой", sub:"резьба + стык с трубой, 90°"},
+    {type:"meter", label:"Счётчик воды", sub:"учёт расхода"},
+    {type:"finefilter", label:"Фильтр тонкой очистки", sub:"картридж"},
+    {type:"leakvalve", label:"Кран с защитой от протечек", sub:"аварийное перекрытие"},
+    {type:"hammer", label:"Датчик гидроудара", sub:"гаситель гидроудара"},
+  ]},
+  {group:"Оборудование", items:[
+    {type:"heater", label:"Водонагреватель", sub:"вход ХВС → выход ГВС"},
+  ]},
+  {group:"Потребители", items:[
+    {type:"consumer", label:"Потребитель", sub:"смеситель / техника"},
+  ]},
+];
+
+function buildPalette(){
+  const root = document.getElementById("palette");
+  root.innerHTML = "";
+  PALETTE_DEF.forEach(section=>{
+    const sec = document.createElement("div"); sec.className="palette-section";
+    const title = document.createElement("div"); title.className="palette-title"; title.textContent = section.group;
+    sec.appendChild(title);
+    section.items.forEach(item=>{
+      const btn = document.createElement("button");
+      btn.className = "pal-item"; btn.type="button";
+      const icon = paletteIcon(item.type, item.medium);
+      btn.appendChild(icon);
+      const lab = document.createElement("span"); lab.className="pi-label";
+      lab.innerHTML = `<b>${item.label}</b><span>${item.sub}</span>`;
+      btn.appendChild(lab);
+      btn.onclick = ()=> addComponent(item.type, item.medium);
+      sec.appendChild(btn);
+    });
+    root.appendChild(sec);
+  });
+  const hint = document.createElement("p");
+  hint.className = "pal-hint";
+  hint.textContent = "Клик по порту начинает трубу. Кликайте по стене, чтобы проложить трассу с поворотами, и завершите на втором порту. Esc — отмена.";
+  root.appendChild(hint);
+}
+
+function addComponent(type, medium){
+  snapshot();
+  const def = CATALOG[type];
+  const c = medium ? def.create(medium) : def.create();
+  c.id = nextId();
+  // When a space boundary is set, new parts spawn inside it (not at the generic
+  // default spot) so a layout planned "upfront" naturally stays within bounds
+  // until the user deliberately drags something out.
+  const originX = spaceConstraint ? SPACE_ORIGIN_CM.x + 30 : 40;
+  const originY = spaceConstraint ? SPACE_ORIGIN_CM.y + 30 : 30;
+  c.x = originX + (components.length%6)*26;
+  c.y = originY + Math.floor(components.length/6)*26;
+  components.push(c);
+  selection = {kind:"comp", id:c.id};
+  render();
+  document.getElementById("hintMsg").textContent = "Элемент добавлен — перетащите его на нужное место у стены.";
+}
+/* ============================= INTERACTION ============================= */
+function cmFromEvent(evt){
+  const rect = stage.getBoundingClientRect();
+  const scaleX = stage.viewBox.baseVal.width / rect.width;
+  const scaleY = stage.viewBox.baseVal.height / rect.height;
+  const px = (evt.clientX - rect.left) * scaleX;
+  const py = (evt.clientY - rect.top) * scaleY;
+  return {x: px/PX, y: py/PX};
+}
+// Same point, snapped to the 5cm grid when "Сетка 5 см" is on — used for
+// placing a NEW route bend. Dragging an existing component/waypoint already
+// snapped correctly; a freshly clicked bend point didn't, so a route meant to
+// run dead straight would land a fraction of a cm off on whichever click
+// wasn't pixel-perfect and read as the whole line quietly drifting.
+function snappedCmFromEvent(evt){
+  const cm = cmFromEvent(evt);
+  if(document.getElementById("snapChk").checked){
+    cm.x = Math.round(cm.x/5)*5;
+    cm.y = Math.round(cm.y/5)*5;
+  }
+  return cm;
+}
+
+stage.addEventListener("pointerdown", (evt)=>{
+  if(viewMode==="3d") return; // 3D is a read-only projection — no dragging, connecting, or tracing there
+  // The stage itself is a real focusable element (tabindex="0") specifically so
+  // this can claim keyboard focus outright on every click, rather than merely
+  // blurring whatever had it. Two problems this fixes at once: (1) a form
+  // control in the inspector (size slider, a <select>, a stepper button…) keeps
+  // focus after you're done with it — clicking an SVG shape doesn't blur it the
+  // way clicking plain page background would, and left stuck there it silently
+  // swallows every shortcut afterward; (2) when this page is embedded in an
+  // iframe, keydown only reaches this document's listeners while THIS frame
+  // holds the browser's overall input focus — an explicit .focus() call on a
+  // genuine element inside it is what actually hands focus to the frame, not
+  // just blurring something. preventDefault() first because the browser's OWN
+  // default mousedown focus-handling runs AFTER this handler and would
+  // otherwise silently revert focus back to <body> right behind our back —
+  // this is what makes an explicit .focus() call here actually stick.
+  evt.preventDefault();
+  try{ stage.focus({preventScroll:true}); }catch(err){ stage.focus(); }
+  const target = evt.target.closest("[data-kind]");
+
+  if(!target){
+    if(pending){
+      // empty wall / grid clicked mid-route: drop a turn and keep tracing
+      pending.waypoints.push(snappedCmFromEvent(evt));
+      render();
+      return;
+    }
+    selection=null; pending=null; render(); return;
+  }
+  const kind = target.dataset.kind;
+
+  if(kind==="port"){
+    const compId = target.dataset.compId, portId = target.dataset.portId;
+    if(!pending){
+      pending = {compId, portId, waypoints:[]};
+      selection = null;
+      render();
+    } else {
+      if(pending.compId===compId && pending.portId===portId){
+        pending = null; render(); return;
+      }
+      tryConnect(pending, {compId, portId});
+      pending = null; pendingMouseCm = null;
+      render();
+    }
+    evt.stopPropagation();
+    return;
+  }
+
+  if(kind==="waypoint"){
+    if(pending) return;
+    snapshot();
+    const pipeId = target.dataset.pipeId, idx = +target.dataset.wpIndex;
+    dragWaypoint = {pipeId, index: idx};
+    selection = {kind:"pipe", id: pipeId};
+    try{ stage.setPointerCapture(evt.pointerId); }catch(err){}
+    render();
+    evt.stopPropagation();
+    return;
+  }
+
+  if(kind==="pipe"){
+    if(pending) return; // ignore clicks on other pipes while actively tracing a route
+    // Don't decide select-vs-reshape yet: a plain click should select the pipe (as
+    // before), but a drag from the same point should pull a brand-new bend out of
+    // the line right there — without touching either end's port attachment. See
+    // the pointermove handler below for where that split actually happens.
+    pipeDragCandidate = {pipeId: target.dataset.id, startCm: cmFromEvent(evt), moved:false};
+    try{ stage.setPointerCapture(evt.pointerId); }catch(err){}
+    return;
+  }
+
+  if(kind==="comp"){
+    if(pending){
+      flashHint("Во время трассировки трубы кликайте по свободной стене (поворот) или по порту (завершение). Esc — отмена.");
+      return;
+    }
+    const id = target.dataset.id;
+    const c = findComp(id);
+    selection = {kind:"comp", id};
+    const startCm = cmFromEvent(evt);
+    drag = { id, offX: startCm.x - c.x, offY: startCm.y - c.y, moved:false };
+    try{ stage.setPointerCapture(evt.pointerId); }catch(err){ /* unsupported input type, drag still works via document-level move */ }
+    render();
+  }
+});
+
+stage.addEventListener("pointermove", (evt)=>{
+  if(viewMode==="3d") return;
+  if(drag){
+    const cm = cmFromEvent(evt);
+    const c = findComp(drag.id);
+    if(!c) return;
+    let nx = cm.x - drag.offX, ny = cm.y - drag.offY;
+    const snap = document.getElementById("snapChk").checked;
+    if(snap){ nx = Math.round(nx/5)*5; ny = Math.round(ny/5)*5; }
+    nx = Math.max(8, nx); ny = Math.max(8, ny);
+    // "Magnetize" onto a compatible threaded neighbor placed nearby — pulls the
+    // dragged part's position into an exact butt-join alignment so releasing the
+    // mouse there hands off to tryConnect with the ports already touching.
+    const snapTarget = findSnapTarget(c, nx, ny);
+    if(snapTarget){ nx += snapTarget.dx; ny += snapTarget.dy; }
+    drag.snapTarget = snapTarget;
+    if(Math.abs(nx-c.x) > 0.01 || Math.abs(ny-c.y) > 0.01){
+      if(!drag.moved) snapshot(); // one snapshot for the whole drag, taken at its first actual movement
+      drag.moved = true;
+    }
+    c.x = nx; c.y = ny;
+    scheduleRender();
+    return;
+  }
+
+  if(pipeDragCandidate && !dragWaypoint){
+    const cm = cmFromEvent(evt);
+    const dist = Math.hypot(cm.x-pipeDragCandidate.startCm.x, cm.y-pipeDragCandidate.startCm.y);
+    if(dist > 0.6){
+      const pipe = pipes.find(p=>p.id===pipeDragCandidate.pipeId);
+      if(pipe){
+        snapshot();
+        const idx = insertWaypointNearest(pipe, pipeDragCandidate.startCm);
+        if(idx>=0){ dragWaypoint = {pipeId: pipe.id, index: idx}; selection = {kind:"pipe", id: pipe.id}; }
+      }
+      pipeDragCandidate.moved = true;
+    }
+  }
+
+  if(dragWaypoint){
+    const pipe = pipes.find(p=>p.id===dragWaypoint.pipeId);
+    if(pipe && pipe.waypoints && pipe.waypoints[dragWaypoint.index]){
+      const cm = cmFromEvent(evt);
+      const snap = document.getElementById("snapChk").checked;
+      let nx=cm.x, ny=cm.y;
+      if(snap){ nx=Math.round(nx/5)*5; ny=Math.round(ny/5)*5; }
+      pipe.waypoints[dragWaypoint.index] = {x:nx, y:ny};
+    }
+    scheduleRender();
+    return;
+  }
+
+  if(pending){
+    // Snapped the same way the click that commits it will be, so the
+    // rubber-band preview shows exactly where the bend will actually land —
+    // no surprise jump between what's previewed and what gets placed.
+    pendingMouseCm = snappedCmFromEvent(evt);
+    scheduleRender();
+  }
+});
+
+stage.addEventListener("pointerup", (evt)=>{
+  if(viewMode==="3d") return;
+  if(drag){
+    if(drag.snapTarget){
+      tryConnect({compId: drag.id, portId: drag.snapTarget.ownPortId}, {compId: drag.snapTarget.otherCompId, portId: drag.snapTarget.otherPortId});
+      render();
+    }
+    drag=null;
+  }
+  if(pipeDragCandidate && !pipeDragCandidate.moved){
+    // never turned into a drag — treat it as the plain "select this pipe" click
+    selection = {kind:"pipe", id: pipeDragCandidate.pipeId};
+    render();
+  }
+  pipeDragCandidate = null;
+  dragWaypoint = null;
+
+  // A route is normally traced as two separate clicks (start port, then end
+  // port) — but pressing on the start port and dragging straight to the end
+  // port in one motion, the way most diagramming tools work, is just as
+  // natural an expectation. That gesture never fires a second pointerdown on
+  // the end port (the button is already held), so without this it silently
+  // does nothing and the pipe never appears. Finish the route here too, the
+  // moment release lands on a different port; releasing anywhere else leaves
+  // the route pending, same as an ordinary first click would.
+  if(pending){
+    const target = evt.target.closest('[data-kind="port"]');
+    if(target){
+      const compId = target.dataset.compId, portId = target.dataset.portId;
+      if(!(pending.compId===compId && pending.portId===portId)){
+        tryConnect(pending, {compId, portId});
+        pending = null; pendingMouseCm = null;
+        render();
+      }
+    }
+  }
+});
+
+// True only when focus sits in something a user could actually be TYPING into
+// — a text-like <input> or a <textarea>. A focused <select> or <input
+// type="range"> (e.g. the size slider) has no editable text for native
+// Ctrl+C/V/Z or Delete to act on, so there's nothing to protect by deferring
+// to them — treating them the same as a text field only meant those shortcuts
+// silently going dead the moment either was touched, with no way back short
+// of clicking some other focusable element.
+const TEXT_INPUT_TYPES = new Set(["text","number","search","email","url","tel","password"]);
+function isTextEditingContext(){
+  const el = document.activeElement;
+  if(!el) return false;
+  if(el.tagName==="TEXTAREA") return true;
+  if(el.tagName==="INPUT") return TEXT_INPUT_TYPES.has((el.type||"text").toLowerCase());
+  return false;
+}
+
+window.addEventListener("keydown", (e)=>{
+  // Ctrl/Cmd+Z / +C / +V — skipped while a text field has focus so the
+  // browser's own native undo/copy/paste inside that field keeps working
+  // exactly as expected, instead of being hijacked by the scheme-level ones.
+  if((e.ctrlKey||e.metaKey) && !isTextEditingContext()){
+    if(e.key==="z"||e.key==="Z"){ e.preventDefault(); undo(); return; }
+    if(e.key==="c"||e.key==="C"){ e.preventDefault(); copySelection(); return; }
+    if(e.key==="v"||e.key==="V"){ e.preventDefault(); pasteClipboard(); return; }
+  }
+
+  if(e.key==="Escape" && specOverlay.classList.contains("open")){ specOverlay.classList.remove("open"); return; }
+  if(e.key==="Escape"){ pending=null; pendingMouseCm=null; render(); }
+  if((e.key==="Delete"||e.key==="Backspace") && selection && !isTextEditingContext()){
+    e.preventDefault();
+    if(selection.kind==="comp"){ removeComponent(selection.id); }
+    else if(selection.kind==="pipe"){ snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); }
+    selection = null; render();
+  }
+  if((e.key==="r"||e.key==="R") && selection && selection.kind==="comp" && !isTextEditingContext()){
+    snapshot();
+    const c = findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); }
+  }
+  if(e.key===" " && selection && selection.kind==="comp"){
+    // Space also rotates the selected element — but only when focus isn't on a
+    // control that already uses Space itself (checkbox toggle, button activation,
+    // text entry), so it doesn't steal that interaction or scroll the page.
+    const tag = document.activeElement.tagName;
+    if(tag!=="INPUT" && tag!=="TEXTAREA" && tag!=="SELECT" && tag!=="BUTTON"){
+      e.preventDefault();
+      snapshot();
+      const c = findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); }
+    }
+  }
+});
+
+// Fittings that carry their own per-port thread (size + ВР/НР), i.e. anything
+// built on threadedFittingInspector(). соединители are deliberately excluded:
+// their two ports are "threaded end" and "pipe-clamp end", not two threads,
+// so there's no well-defined pair of thread types to check against each other.
+const DIRECT_JOIN_TYPES = new Set(["checkvalve","reducer","nipple","coupling","barrel","tee","elbow","valve","strainer","meter","plug","finefilter","leakvalve","hammer","union"]);
+// A fitting placed flush against a compatible neighbor screws straight onto it
+// — no pipe run needed. Only a same-size, opposite-thread pair (ВР+НР) can
+// actually make up like that; two ВР ends or two НР ends can't mate directly
+// no matter how close together they're drawn (that's what a nipple or a
+// coupling is *for*), and a size mismatch can't thread together at all.
+function portThreadInfo(compId, portId){
+  const c = findComp(compId);
+  if(!c || !DIRECT_JOIN_TYPES.has(c.type) || !Array.isArray(c.threads)) return null;
+  const idx = getPorts(c).findIndex(p=>p.id===portId);
+  if(idx<0) return null;
+  return {size: c.size, type: c.threads[idx]};
+}
+function threadsMateDirectly(tA, tB){
+  return !!tA && !!tB && tA.size===tB.size && tA.type!==tB.type;
+}
+// "touching", not a routed run. Generous on purpose: with the 5cm placement
+// grid on and typical fitting half-widths of ~2.5–3cm, dragging two bodies to
+// visibly sit flush against each other lands their ports anywhere from ~0 to
+// ~8cm apart depending on which way each side's position happened to round —
+// a tight threshold would make the feature work only sometimes for the exact
+// same "clearly adjacent" placement.
+const DIRECT_JOIN_MAX_DIST_CM = 8;
+// Wider than the direct-join distance itself — this is the "how close do you
+// have to drag it before it magnetizes" radius, not the "is it close enough to
+// actually screw together" one. Dragging manually to within a millimetre of a
+// perfect butt-join is unrealistic; this catches "clearly meant to dock these
+// two" and then *makes* the fit exact by nudging the dragged part into place.
+const MAGNET_SNAP_RADIUS_CM = 15;
+
+// While dragging component `c` toward candidate position (nx,ny), look for an
+// unconnected port on some OTHER component whose thread is compatible with one
+// of `c`'s own unconnected ports and within snapping range. Returns the delta
+// to shift (nx,ny) by so the two ports land exactly on top of each other
+// (ready for tryConnect to turn into a direct joint on release), or null.
+function findSnapTarget(c, nx, ny){
+  let best = null, bestDist = MAGNET_SNAP_RADIUS_CM;
+  getPorts(c).forEach(ownPort=>{
+    if(pipeConnectedTo(c.id, ownPort.id)) return;
+    const tiOwn = portThreadInfo(c.id, ownPort.id);
+    if(!tiOwn) return;
+    const s = c.scale || 1;
+    const [rdx, rdy] = rotatePt(ownPort.dx*s, ownPort.dy*s, c.rot||0);
+    const trial = {x: nx+rdx, y: ny+rdy};
+    components.forEach(other=>{
+      if(other.id===c.id) return;
+      getPorts(other).forEach(otherPort=>{
+        if(ownPort.dir===otherPort.dir) return;
+        if(pipeConnectedTo(other.id, otherPort.id)) return;
+        const tiOther = portThreadInfo(other.id, otherPort.id);
+        if(!threadsMateDirectly(tiOwn, tiOther)) return;
+        const wOther = portWorldCm(other, otherPort);
+        const dist = Math.hypot(wOther.x-trial.x, wOther.y-trial.y);
+        if(dist < bestDist){
+          bestDist = dist;
+          best = { ownPortId: ownPort.id, otherCompId: other.id, otherPortId: otherPort.id, dx: wOther.x-trial.x, dy: wOther.y-trial.y };
+        }
+      });
+    });
+  });
+  return best;
+}
+
+function tryConnect(a, b){
+  if(a.compId===b.compId) return; // no self loops
+  const pa = findPort(a.compId, a.portId), pb = findPort(b.compId, b.portId);
+  if(!pa || !pb) return;
+  // one side must be 'out', other 'in' (order-agnostic)
+  const aIsOut = pa.dir==="out", bIsOut = pb.dir==="out";
+  if(aIsOut===bIsOut) { flashHint("Соединяйте выход (из коллектора/тройника) со входом элемента."); return; }
+  if(pipeConnectedTo(a.compId, a.portId) || pipeConnectedTo(b.compId, b.portId)){
+    flashHint("Этот порт уже подключён. Сначала удалите существующую трубу.");
+    return;
+  }
+  // Reject wiring a resolved-hot run into a resolved-cold one (or vice versa) —
+  // e.g. a hot manifold's outlet run straight onto the water heater's COLD
+  // inlet. Ports with no source behind them yet (medium still unresolved) are
+  // always allowed through, same as before; this only catches the case where
+  // both sides already know what they are and they disagree.
+  const {portMedium} = propagateMedium();
+  const mediumA = portMedium[a.compId+"|"+a.portId], mediumB = portMedium[b.compId+"|"+b.portId];
+  if(mediumA && mediumB && mediumA !== mediumB){
+    flashHint("Нельзя соединить горячую и холодную линии напрямую — проверьте, куда ведёт труба (например, в водонагреватель заводится холодная вода, а не горячая).");
+    return;
+  }
+
+  // Two threaded fittings placed touching each other (no route traced between
+  // them) join by screwing straight together instead of via a flexible pipe.
+  const ca = findComp(a.compId), cb = findComp(b.compId);
+  const wa = portWorldCm(ca, pa), wb = portWorldCm(cb, pb);
+  const distCm = Math.hypot(wa.x-wb.x, wa.y-wb.y);
+  const noRoute = !a.waypoints || a.waypoints.length===0;
+  if(noRoute && distCm <= DIRECT_JOIN_MAX_DIST_CM){
+    const tiA = portThreadInfo(a.compId, a.portId), tiB = portThreadInfo(b.compId, b.portId);
+    if(tiA && tiB){
+      if(!threadsMateDirectly(tiA, tiB)){
+        if(tiA.size !== tiB.size){
+          flashHint(`Впритык не состыкуются — разный размер резьбы (${threadSizeLabel(tiA.size)} и ${threadSizeLabel(tiB.size)}). Нужен переходник или труба.`);
+        } else {
+          flashHint(`Два конца ${tiA.type}-${tiB.type} напрямую не соединяются — нужен ${tiA.type==="ВР"?"ниппель/бочонок":"муфта"} между ними, или проложите трубу.`);
+        }
+        return;
+      }
+      snapshot();
+      pipes.push({ id: nextId(), a:{compId:a.compId, portId:a.portId}, b:{compId:b.compId, portId:b.portId}, direct:true });
+      return;
+    }
+  }
+
+  snapshot();
+  pipes.push({ id: nextId(), a:{compId:a.compId, portId:a.portId}, b:{compId:b.compId, portId:b.portId}, waypoints: a.waypoints ? a.waypoints.slice() : [], diameter: lastPipeDiameter });
+}
+
+function flashHint(msg){
+  const el2 = document.getElementById("hintMsg");
+  el2.textContent = msg;
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(()=>{ el2.textContent = "Кликните по палитре слева, чтобы добавить элемент на стену."; }, 3200);
+}
+
+/* ============================= TOPBAR ACTIONS ============================= */
+const scaleSel = document.getElementById("scaleSel");
+SCALES.forEach((s,i)=>{
+  const o = document.createElement("option"); o.value=i; o.textContent=s.label; scaleSel.appendChild(o);
+});
+scaleSel.value = 1;
+scaleSel.onchange = ()=>{ PX = SCALES[+scaleSel.value].v; render(); };
+
+// Continuous zoom (Ctrl/Cmd+wheel, or trackpad pinch — browsers report both as
+// a wheel event with ctrlKey set) on top of the discrete scale presets above.
+// A plain wheel/trackpad scroll is left alone so it keeps panning the canvas
+// normally; only the zoom gesture is intercepted, same convention as Figma or
+// Google Maps. Zooms around the cursor so whatever you're pointing at stays
+// under the pointer instead of the view jumping.
+const PX_MIN = 1.5, PX_MAX = 14;
+canvasWrap.addEventListener("wheel", (evt)=>{
+  if(!(evt.ctrlKey || evt.metaKey)) return;
+  evt.preventDefault();
+  const rect = canvasWrap.getBoundingClientRect();
+  const cx = evt.clientX - rect.left + canvasWrap.scrollLeft;
+  const cy = evt.clientY - rect.top + canvasWrap.scrollTop;
+  const oldPX = PX;
+  const newPX = Math.min(PX_MAX, Math.max(PX_MIN, PX * Math.exp(-evt.deltaY * 0.001)));
+  if(newPX === oldPX) return;
+  PX = newPX;
+  render();
+  const scale = newPX / oldPX;
+  canvasWrap.scrollLeft = cx*scale - (evt.clientX - rect.left);
+  canvasWrap.scrollTop = cy*scale - (evt.clientY - rect.top);
+}, {passive:false});
+
+document.querySelectorAll('#unitToggle button').forEach(btn=>{
+  btn.onclick = ()=>{
+    diameterUnit = btn.dataset.unit;
+    document.querySelectorAll('#unitToggle button').forEach(b=>b.classList.toggle('active', b===btn));
+    render();
+  };
+});
+
+const spaceChk = document.getElementById("spaceChk"), spaceWInp = document.getElementById("spaceW"), spaceHInp = document.getElementById("spaceH");
+function syncSpaceConstraint(){
+  spaceWInp.disabled = spaceHInp.disabled = !spaceChk.checked;
+  if(spaceChk.checked){
+    const w = Math.max(20, +spaceWInp.value || 200), h = Math.max(20, +spaceHInp.value || 150);
+    spaceConstraint = {w, h};
+  } else {
+    spaceConstraint = null;
+  }
+  renderStageOnly();
+}
+spaceChk.onchange = syncSpaceConstraint;
+spaceWInp.oninput = syncSpaceConstraint;
+spaceHInp.oninput = syncSpaceConstraint;
+
+const btnView3D = document.getElementById("btnView3D");
+btnView3D.onclick = ()=>{
+  viewMode = viewMode==="3d" ? "2d" : "3d";
+  btnView3D.textContent = viewMode==="3d" ? "📐 2D вид" : "🧊 3D вид";
+  btnView3D.classList.toggle("primary", viewMode==="3d");
+  if(viewMode==="3d"){ pending=null; pendingMouseCm=null; drag=null; dragWaypoint=null; pipeDragCandidate=null; }
+  render();
+};
+document.getElementById("btnRotate").onclick = ()=>{ if(selection && selection.kind==="comp"){ snapshot(); const c=findComp(selection.id); if(c){ c.rot=((c.rot||0)+90)%360; render(); } } };
+document.getElementById("btnUndo").onclick = ()=> undo();
+// Plain buttons for copy/paste, alongside Ctrl+C/Ctrl+V — a keyboard shortcut
+// can be swallowed by all sorts of things upstream of this page (OS-level
+// bindings, browser extensions, the host page's own shortcuts), and when that
+// happens there was previously no other way to copy or paste at all. A click
+// always reaches this handler directly, so it works no matter what's eating
+// the keyboard combo.
+document.getElementById("btnCopy").onclick = ()=> copySelection();
+document.getElementById("btnPaste").onclick = ()=> pasteClipboard();
+document.getElementById("btnDelete").onclick = ()=>{
+  if(!selection) return;
+  if(selection.kind==="comp") removeComponent(selection.id);
+  else { snapshot(); pipes = pipes.filter(p=>p.id!==selection.id); }
+  selection=null; render();
+};
+
+const STORAGE_KEY = "water-supply-designer-v1";
+document.getElementById("btnSave").onclick = ()=>{
+  const openPorts = findOpenPorts();
+  if(openPorts.length && !confirm(
+    `На схеме ${openPorts.length} незаглушённых порт(ов) — например, свободный конец коллектора или вход арматуры без трубы.\n\n` +
+    `Список смотрите в Спецификации.\n\nВсё равно сохранить как есть?`
+  )) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({components, pipes, uid}));
+  flashHint("Схема сохранена в этом браузере.");
+};
+document.getElementById("btnLoad").onclick = ()=>{
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw){ flashHint("Сохранённой схемы не найдено."); return; }
+  try{
+    const data = JSON.parse(raw);
+    snapshot();
+    components = data.components || [];
+    pipes = data.pipes || [];
+    uid = data.uid || uid;
+    selection = null; pending = null;
+    render();
+    flashHint("Схема загружена.");
+  }catch(e){ flashHint("Не удалось загрузить сохранённую схему."); }
+};
+document.getElementById("btnClear").onclick = ()=>{
+  if(components.length===0 && pipes.length===0) return;
+  if(confirm("Очистить всю схему? Действие необратимо.")){
+    snapshot();
+    components = []; pipes = []; selection=null; pending=null; render();
+  }
+};
+
+/* ============================= SPECIFICATION ============================= */
+// A fitting has no size of its own — it takes whatever diameter the pipe(s)
+// threaded onto its ports actually are. Reads it straight off the connected
+// pipe(s) rather than storing a separate size on the fitting, so it can never
+// drift out of sync with what's actually drawn. A fitting with two different
+// diameters on its ports (rare, but possible on a reducer-like junction) lists
+// both; one with nothing connected yet shows no size at all.
+function fittingDiameterLabel(c){
+  const dias = new Set();
+  getPorts(c).forEach(port=>{
+    const pipe = pipeConnectedTo(c.id, port.id);
+    if(pipe) dias.add(pipe.diameter || 20);
+  });
+  if(dias.size===0) return "";
+  return [...dias].sort((a,b)=>a-b).map(diameterLabelFull).join(" / ");
+}
+
+// Threaded fittings (nipples, couplings, check valves, reducers, tees,
+// elbows, valves…) are sized by their own nominal thread — not by whatever
+// flexible pipe happens to be routed to their ports — so their spec name
+// comes from threadedName() instead of fittingDiameterLabel(). Соединители
+// are the odd one out: they carry BOTH a threaded end and a pipe-clamp end,
+// so they get their own thread label AND, same as any other fitting, the
+// attached pipe's diameter.
+const THREADED_NAME_TYPES = new Set(["checkvalve","reducer","nipple","coupling","barrel","tee","elbow","valve","strainer","meter","plug","finefilter","leakvalve","hammer","union"]);
+const CONNECTOR_TYPES = new Set(["connector","connector_angle"]);
+
+// The same "what is this thing called" logic the spec's equipment table uses,
+// factored out so the open-ports check (below) can name a component the same
+// way instead of re-deriving it.
+function equipmentDisplayName(c){
+  let name;
+  if(c.type==="manifold") name = `${c.label} (${c.count} отв.)`;
+  else if(c.type==="source") name = c.medium==="hot" ? "Ввод ГВС (от стояка)" : "Ввод ХВС (от стояка)";
+  else if(c.type==="consumer") name = `Потребитель — ${CATALOG.consumer.displayText(c)}`;
+  else if(THREADED_NAME_TYPES.has(c.type)) name = threadedName(c);
+  else if(CONNECTOR_TYPES.has(c.type)) name = `${CATALOG[c.type].label} - ${threadSizeLabel(c.size)} ${c.thread}`;
+  else name = CATALOG[c.type].label;
+  // Everything except the threaded-fixed group also gets whatever's actually
+  // threaded onto its ports appended — a manifold with outlets in more than
+  // one bore lists every size present, right alongside its outlet count; a
+  // соединитель gets the pipe-clamp side's diameter next to its own thread.
+  if(!THREADED_NAME_TYPES.has(c.type)){
+    const size = fittingDiameterLabel(c);
+    if(size) name += ` — ${size}`;
+  }
+  return name;
+}
+
+// A short, human name for one specific port — "патрубок 2", "вход ГВС" — used
+// only by the open-ports check to say *which* opening on a component is bare.
+function portDisplayLabel(c, port){
+  if(c.type==="manifold"){
+    if(port.id==="in") return "ввод";
+    if(port.id==="end") return "свободный конец";
+    const label = c.outletLabels && c.outletLabels[+port.id.slice(3)];
+    const idx = +port.id.slice(3) + 1;
+    return label ? `патрубок ${idx} («${label}»)` : `патрубок ${idx}`;
+  }
+  if(c.type==="consumer") return port.id==="hot" ? "вход ГВС" : "вход ХВС";
+  if(c.type==="tee"){
+    if(port.id==="in") return "вход";
+    return port.id==="out1" ? "выход 1" : "выход 2";
+  }
+  if(port.id==="in") return "вход";
+  if(port.id==="out") return "выход";
+  return port.id;
+}
+
+// Every port left without a pipe is either a dead end that needs a заглушка,
+// or a joint the user just hasn't routed yet — either way, worth a nudge
+// before the scheme is treated as finished (saved, or the spec closed).
+function findOpenPorts(){
+  const list = [];
+  components.forEach(c=>{
+    getPorts(c).forEach(port=>{
+      if(!pipeConnectedTo(c.id, port.id)){
+        list.push({compId:c.id, portId:port.id, name: equipmentDisplayName(c), portLabel: portDisplayLabel(c, port)});
+      }
+    });
+  });
+  return list;
+}
+
+function buildSpecification(){
+  const equipment = {}; // display name (incl. size) -> count
+  components.forEach(c=>{
+    const name = equipmentDisplayName(c);
+    equipment[name] = (equipment[name]||0) + 1;
+  });
+
+  const pipeStats = {}; // mm -> {count, lengthCm}
+  pipes.forEach(p=>{
+    if(p.direct) return; // a screwed-together joint isn't a length of pipe stock
+    const ca=findComp(p.a.compId), cb=findComp(p.b.compId);
+    const pa=findPort(p.a.compId,p.a.portId), pb=findPort(p.b.compId,p.b.portId);
+    if(!ca||!cb||!pa||!pb) return;
+    const wa=portWorldCm(ca,pa), wb=portWorldCm(cb,pb);
+    const pts=[wa, ...(p.waypoints||[]), wb];
+    const mm = p.diameter||20;
+    if(!pipeStats[mm]) pipeStats[mm] = {count:0, lengthCm:0};
+    pipeStats[mm].count++;
+    pipeStats[mm].lengthCm += routeLengthCm(pts);
+  });
+
+  // A pipe can't thread directly onto a manifold's outlet/inlet — that joint always
+  // needs a compression fitting ("соединитель"/евроконус). Count one per pipe end
+  // that lands on a manifold without an explicit connector already placed there,
+  // sized to that pipe's diameter, so the spec reflects hardware you'll actually
+  // need to buy even if you didn't bother drawing it on the schematic.
+  const connectorStats = {}; // mm -> count
+  pipes.forEach(p=>{
+    const compA=findComp(p.a.compId), compB=findComp(p.b.compId);
+    if(!compA||!compB) return;
+    const mm = p.diameter||20;
+    if(compA.type==="manifold" && !CONNECTOR_TYPES.has(compB.type)) connectorStats[mm]=(connectorStats[mm]||0)+1;
+    if(compB.type==="manifold" && !CONNECTOR_TYPES.has(compA.type)) connectorStats[mm]=(connectorStats[mm]||0)+1;
+  });
+
+  return {equipment, pipeStats, connectorStats};
+}
+
+function specRows(spec){
+  const rows = [];
+  Object.keys(spec.equipment).sort((a,b)=>a.localeCompare(b,"ru")).forEach(name=>{
+    rows.push({section:"Оборудование и арматура", name, qty: spec.equipment[name]+" шт.", extra:""});
+  });
+  PIPE_SIZES.forEach(mm=>{
+    const s = spec.pipeStats[mm];
+    if(!s) return;
+    rows.push({section:"Трубы", name:`Труба ${diameterLabelFull(mm)}`, qty: s.count+" уч.", extra:(s.lengthCm/100).toFixed(1)+" м"});
+  });
+  PIPE_SIZES.forEach(mm=>{
+    const n = spec.connectorStats[mm];
+    if(!n) return;
+    rows.push({section:"Требуется докупить", name:`Соединитель (евроконус) ${diameterLabelFull(mm)} — под коллектор`, qty:n+" шт.", extra:""});
+  });
+  return rows;
+}
+
+// Rendered as its own section at the top of the spec, so it's the first thing
+// seen right before saving or closing — the two moments the user is treating
+// the scheme as "done".
+function openPortsSectionHtml(){
+  const openPorts = findOpenPorts();
+  if(!openPorts.length) return "";
+  return `<div class="spec-section">
+    <h3 style="color:var(--hot);">⚠ Незаглушённые порты (${openPorts.length})</h3>
+    <table class="spec-table"><thead><tr><th>Элемент</th><th>Порт</th></tr></thead><tbody>
+      ${openPorts.map(o=>`<tr><td>${escapeAttr(o.name)}</td><td>${escapeAttr(o.portLabel)}</td></tr>`).join("")}
+    </tbody></table>
+    <p class="spec-note" style="border-color:var(--hot);">На коллекторах и прочей арматуре у каждого свободного порта должна быть либо заглушка, либо продолжение трассы — иначе схема не отражает реальный монтаж.</p>
+  </div>`;
+}
+
+function renderSpecBody(){
+  const spec = buildSpecification();
+  const rows = specRows(spec);
+  const body = document.getElementById("specBody");
+  const openHtml = openPortsSectionHtml();
+  if(rows.length===0){
+    body.innerHTML = openHtml || `<p class="spec-empty">На схеме пока нет элементов — добавьте оборудование и трубы, чтобы получить спецификацию.</p>`;
+    return;
+  }
+  const sections = {};
+  rows.forEach(r=>{ (sections[r.section] = sections[r.section]||[]).push(r); });
+  let html = openHtml;
+  ["Оборудование и арматура","Трубы","Требуется докупить"].forEach(sec=>{
+    if(!sections[sec]) return;
+    html += `<div class="spec-section"><h3>${sec}</h3><table class="spec-table"><thead><tr><th>Наименование</th><th>Кол-во</th><th>Длина</th></tr></thead><tbody>`;
+    sections[sec].forEach(r=>{
+      html += `<tr><td>${escapeAttr(r.name)}</td><td class="num">${escapeAttr(r.qty)}</td><td class="num">${escapeAttr(r.extra)}</td></tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+  if(Object.keys(spec.connectorStats).length){
+    html += `<p class="spec-note">Соединители посчитаны автоматически: труба не накручивается на коллектор напрямую, на каждый такой стык нужен переходник-евроконус нужного диаметра — независимо от того, нарисован ли он на схеме.</p>`;
+  }
+  body.innerHTML = html;
+}
+
+function specToCsv(){
+  const rows = specRows(buildSpecification());
+  const esc = v => `"${String(v).replace(/"/g,'""')}"`;
+  const lines = ["Раздел;Наименование;Количество;Длина"];
+  rows.forEach(r=> lines.push([r.section,r.name,r.qty,r.extra].map(esc).join(";")));
+  return lines.join("\r\n");
+}
+
+const specOverlay = document.getElementById("specOverlay");
+document.getElementById("btnSpec").onclick = ()=>{ renderSpecBody(); specOverlay.classList.add("open"); };
+document.getElementById("specCloseBtn").onclick = ()=> specOverlay.classList.remove("open");
+specOverlay.addEventListener("click", (e)=>{ if(e.target===specOverlay) specOverlay.classList.remove("open"); });
+document.getElementById("specDownloadBtn").onclick = ()=>{
+  const csv = "﻿" + specToCsv(); // BOM so Excel reads Cyrillic correctly
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "spetsifikatsiya.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// Browsers don't allow a custom message here — they only show their own
+// generic "leave site?" prompt — but firing it at all is still the "before
+// closing" check for the case a keyboard/pipeline check inside the app can't
+// reach: actually closing the tab. Only asked when there's real unfinished
+// business (open ports) on a scheme that has anything in it.
+window.addEventListener("beforeunload", (e)=>{
+  if(components.length===0) return;
+  if(findOpenPorts().length===0) return;
+  e.preventDefault();
+  e.returnValue = "";
+});
+
+/* ============================= INIT ============================= */
+buildPalette();
+render();
+})();
+</script>
+
+
+</body>
+</html>
