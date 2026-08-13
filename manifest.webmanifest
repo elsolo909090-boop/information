@@ -1,0 +1,17 @@
+{
+  "name": "Прыг-Скок: Учись играя",
+  "short_name": "Прыг-Скок",
+  "description": "Обучающий раннер для детей: математика и русский язык",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#bfe9f2",
+  "theme_color": "#3fb6a8",
+  "lang": "ru",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

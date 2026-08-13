@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>Прыг-Скок: Учись играя</title>
+<meta name="description" content="Обучающий раннер для детей: математика и русский язык" />
+
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#3fb6a8" />
+
+<!-- iOS "Add to Home Screen" support (Safari ignores the manifest for these) -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Прыг-Скок" />
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+
+<link rel="icon" href="assets/icons/icon-192.png" />
+<link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== SETTINGS SCREEN ===================== -->
+  <section id="screen-settings" class="screen active">
+    <div class="panel">
+      <h1>Прыг-Скок 🐻</h1>
+      <p class="subtitle">Обучающий раннер</p>
+
+      <div class="field">
+        <label>Класс</label>
+        <div id="grade-switcher" class="switcher"></div>
+      </div>
+
+      <div class="field">
+        <label>Предметы</label>
+        <div id="subject-checkboxes" class="checkbox-group"></div>
+      </div>
+
+      <p id="settings-warning" class="warning hidden">Выберите класс и хотя бы один предмет</p>
+
+      <button id="btn-start" class="btn btn-primary">Начать игру ▶</button>
+      <button id="btn-open-stats" class="btn btn-secondary">📊 Статистика</button>
+      <button id="btn-open-parent" class="btn btn-secondary">🔒 Родителям</button>
+    </div>
+  </section>
+
+  <!-- ===================== GAME SCREEN ===================== -->
+  <section id="screen-game" class="screen">
+    <div id="hud">
+      <div id="hud-money">💰 <span id="money-value">0</span> ₽</div>
+      <button id="btn-pause" class="hud-btn">⏸</button>
+    </div>
+    <div id="game-canvas-mount"></div>
+
+    <!-- Task modal -->
+    <div id="task-modal" class="modal hidden">
+      <div class="modal-card">
+        <div id="task-subject-badge" class="badge"></div>
+        <div id="task-question"></div>
+        <div id="task-options" class="options-grid"></div>
+        <div id="task-feedback" class="feedback hidden"></div>
+        <button id="btn-skip-task" class="btn btn-text hidden">Пропустить (без награды)</button>
+      </div>
+    </div>
+
+    <!-- Pause modal -->
+    <div id="pause-modal" class="modal hidden">
+      <div class="modal-card">
+        <h2>Пауза</h2>
+        <button id="btn-resume" class="btn btn-primary">▶ Продолжить</button>
+        <button id="btn-quit" class="btn btn-secondary">🏠 В меню</button>
+      </div>
+    </div>
+
+    <!-- Run summary modal -->
+    <div id="summary-modal" class="modal hidden">
+      <div class="modal-card">
+        <h2>Отличная пробежка! 🎉</h2>
+        <p id="summary-text"></p>
+        <button id="btn-summary-close" class="btn btn-primary">В меню</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STATS SCREEN ===================== -->
+  <section id="screen-stats" class="screen">
+    <div class="panel">
+      <h1>Статистика</h1>
+      <div id="stats-total" class="stats-total"></div>
+      <div id="stats-breakdown"></div>
+      <button id="btn-stats-back" class="btn btn-primary">Назад</button>
+    </div>
+  </section>
+
+  <!-- ===================== PARENT GATE ===================== -->
+  <section id="screen-parent-gate" class="screen">
+    <div class="panel">
+      <h1>Для взрослых</h1>
+      <p id="parent-gate-question" class="gate-question"></p>
+      <input id="parent-gate-input" type="number" inputmode="numeric" placeholder="Ответ" />
+      <p id="parent-gate-error" class="warning hidden">Неверно, попробуйте ещё раз</p>
+      <button id="btn-parent-gate-submit" class="btn btn-primary">Войти</button>
+      <button id="btn-parent-gate-back" class="btn btn-text">Назад</button>
+    </div>
+  </section>
+
+  <!-- ===================== PARENT PANEL ===================== -->
+  <section id="screen-parent" class="screen">
+    <div class="panel">
+      <h1>Родительская панель</h1>
+      <div id="parent-summary" class="stats-total"></div>
+      <button id="btn-parent-export" class="btn btn-secondary">⬇ Экспорт истории (JSON)</button>
+      <button id="btn-parent-reset" class="btn btn-danger">Сбросить прогресс</button>
+      <button id="btn-parent-back" class="btn btn-primary">Назад</button>
+    </div>
+  </section>
+
+</div>
+
+<script src="assets/phaser.min.js"></script>
+<script src="src/storage.js"></script>
+<script src="src/tasks.js"></script>
+<script src="src/game.js"></script>
+<script src="src/ui.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
