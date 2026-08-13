@@ -1,0 +1,10 @@
+{
+  "name": "collector-island",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Collector Island — обучающая мобильная игра (MVP, Phaser 3)",
+  "scripts": {
+    "start": "npx --yes http-server -p 8080 -c-1",
+    "serve": "npx --yes http-server -p 8080 -c-1"
+  }
+}
