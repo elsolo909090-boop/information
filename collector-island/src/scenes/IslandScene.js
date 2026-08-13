@@ -1,28 +1,22 @@
-const TILE_W = 128;
-const TILE_H = 64;
-const GRID_ORIGIN = { x: 0, y: -40 };
+// Original-art coordinate space: assets/original/island.png is 1408x768.
+// Chest positions are placed on the pre-drawn chest spots / empty plots in that artwork.
+const ART_W = 1408;
+const ART_H = 768;
+const ART_CENTER = { x: ART_W / 2, y: ART_H / 2 };
 
-const CHEST_TILES = [
-  { gx: 0, gy: -1 },
-  { gx: 1, gy: 0 },
-  { gx: 0, gy: 1 },
-  { gx: -1, gy: 0 },
-  { gx: 0, gy: 0 },
+const CHEST_ART_POS = [
+  { x: 710, y: 135 }, // top chest
+  { x: 380, y: 345 }, // left chest
+  { x: 980, y: 260 }, // right chest
+  { x: 1100, y: 470 }, // bottom-right chest
+  { x: 650, y: 520 }, // empty plot (middle-bottom)
 ];
+const CHEST_ART_WIDTH = 210;
 
 const BUILDING_SLOTS = [
-  { gx: -2, gy: -1 },
-  { gx: 2, gy: -1 },
-  { gx: -2, gy: 1 },
-  { gx: 2, gy: 1 },
+  { x: 500, y: 470 },
+  { x: 850, y: 490 },
 ];
-
-function isoToScreen(gx, gy, cx, cy) {
-  return {
-    x: cx + GRID_ORIGIN.x + (gx - gy) * (TILE_W / 2),
-    y: cy + GRID_ORIGIN.y + (gx + gy) * (TILE_H / 2),
-  };
-}
 
 class IslandScene extends Phaser.Scene {
   constructor() {
@@ -36,17 +30,27 @@ class IslandScene extends Phaser.Scene {
     this.onHudUpdate = data.onHudUpdate;
   }
 
+  preload() {
+    this.load.image('island', 'assets/original/island.png');
+    this.load.image('chestClosed', 'assets/sprites/chest_closed.png');
+    this.load.image('chestOpen', 'assets/sprites/chest_open.png');
+    this.load.image('petEgg', 'assets/sprites/pet_egg.png');
+    this.load.image('petBaby', 'assets/sprites/pet_baby.png');
+    this.load.image('petAdult', 'assets/sprites/pet_adult.png');
+    this.load.image('foxCelebrate', 'assets/sprites/fox_celebrate.png');
+  }
+
   create() {
     this.cameras.main.setBackgroundColor('#5cc8e8');
     const cx = this.scale.width / 2;
-    const cy = this.scale.height / 2 - 20;
+    const cy = this.scale.height / 2;
     this.center = { cx, cy };
 
-    this.drawIslandBase(cx, cy);
+    this.drawIslandBackground(cx, cy);
     this.chestSprites = {};
-    this.drawChests(cx, cy);
-    this.drawBuildingSlots(cx, cy);
-    this.drawExistingBuildings(cx, cy);
+    this.drawChests();
+    this.drawBuildingSlots();
+    this.drawExistingBuildings();
     this.drawPet(cx, cy);
 
     this.taskModal.onResolved = ({ correct, task }) => this.handleResolved(correct, task);
@@ -54,82 +58,53 @@ class IslandScene extends Phaser.Scene {
     this.updateHud();
   }
 
-  drawIslandBase(cx, cy) {
-    const g = this.add.graphics();
-    g.fillStyle(0xe8c988, 1);
-    for (let gx = -3; gx <= 3; gx++) {
-      for (let gy = -3; gy <= 3; gy++) {
-        const dist = Math.abs(gx) + Math.abs(gy);
-        if (dist > 3) continue;
-        const p = isoToScreen(gx, gy, cx, cy);
-        const isGrass = dist <= 2;
-        g.fillStyle(isGrass ? 0x7fc95a : 0xe8c988, 1);
-        this.drawDiamond(g, p.x, p.y, TILE_W, TILE_H);
-      }
-    }
-    g.lineStyle(1, 0x4a8f34, 0.25);
+  // Maps a coordinate in the original 1408x768 artwork to current screen space.
+  artToScreen(x, y) {
+    return {
+      x: this.center.cx + (x - ART_CENTER.x) * this.artScale,
+      y: this.center.cy + (y - ART_CENTER.y) * this.artScale,
+    };
   }
 
-  drawDiamond(g, x, y, w, h) {
-    g.beginPath();
-    g.moveTo(x, y - h / 2);
-    g.lineTo(x + w / 2, y);
-    g.lineTo(x, y + h / 2);
-    g.lineTo(x - w / 2, y);
-    g.closePath();
-    g.fillPath();
+  drawIslandBackground(cx, cy) {
+    const bg = this.add.image(cx, cy, 'island');
+    const scale = Math.max(this.scale.width / ART_W, this.scale.height / ART_H);
+    this.artScale = scale;
+    bg.setScale(scale);
   }
 
-  drawChests(cx, cy) {
+  drawChests() {
     const chests = this.gameState.data.chests;
-    CHEST_TILES.forEach((tile, i) => {
-      const p = isoToScreen(tile.gx, tile.gy, cx, cy);
+    CHEST_ART_POS.forEach((artPos, i) => {
+      const p = this.artToScreen(artPos.x, artPos.y);
       const chestState = chests[i];
       const container = this.add.container(p.x, p.y);
 
-      const shadow = this.add.ellipse(0, 18, 46, 16, 0x000000, 0.2);
-      const box = this.add.graphics();
-      this.paintChest(box, chestState.opened);
-      const label = this.add.text(0, -46, `#${i + 1}`, {
-        fontSize: '14px',
+      const displayW = CHEST_ART_WIDTH * this.artScale;
+      const sprite = this.add.image(0, 0, chestState.opened ? 'chestOpen' : 'chestClosed');
+      const scaleFactor = displayW / sprite.width;
+      sprite.setScale(scaleFactor);
+
+      const label = this.add.text(0, -displayW * 0.55, `#${i + 1}`, {
+        fontSize: '13px',
         color: '#3b2a1a',
         fontFamily: 'sans-serif',
         backgroundColor: '#ffe9a8',
         padding: { x: 4, y: 2 },
       }).setOrigin(0.5);
 
-      container.add([shadow, box, label]);
-      container.setSize(64, 64);
-      box.setInteractive(
-        new Phaser.Geom.Rectangle(-32, -32, 64, 64),
-        Phaser.Geom.Rectangle.Contains
-      );
-      box.on('pointerdown', () => this.onChestTap(i));
-      box.input.cursor = 'pointer';
+      container.add([sprite, label]);
+      sprite.setInteractive({ useHandCursor: true });
+      sprite.on('pointerdown', () => this.onChestTap(i));
 
-      this.chestSprites[i] = { container, box };
+      this.chestSprites[i] = { container, sprite, displayW };
     });
   }
 
-  paintChest(g, opened) {
-    g.clear();
-    if (!opened) {
-      g.fillStyle(0x8a5a2b, 1);
-      g.fillRoundedRect(-26, -14, 52, 28, 6);
-      g.fillStyle(0xd9a441, 1);
-      g.fillRoundedRect(-26, -18, 52, 10, 6);
-      g.fillStyle(0xffe066, 1);
-      g.fillCircle(0, -8, 5);
-    } else {
-      g.fillStyle(0x6b4423, 1);
-      g.fillRoundedRect(-26, -6, 52, 20, 6);
-      g.fillStyle(0xd9a441, 1);
-      g.fillRoundedRect(-26, -26, 52, 12, 6);
-      g.fillStyle(0xfff3c4, 1);
-      g.fillCircle(-8, -2, 4);
-      g.fillCircle(4, -4, 3);
-      g.fillCircle(12, 0, 3);
-    }
+  setChestTexture(index, opened) {
+    const { sprite, displayW } = this.chestSprites[index];
+    sprite.setTexture(opened ? 'chestOpen' : 'chestClosed');
+    sprite.setScale(displayW / sprite.width);
   }
 
   onChestTap(index) {
@@ -158,17 +133,18 @@ class IslandScene extends Phaser.Scene {
     this.gameState.advanceDailyQuest(task.subject);
     if (this.gameState.data.activePetId) {
       this.gameState.feedActivePet();
+      this.drawPet(this.center.cx, this.center.cy);
     }
     this.gameState.save();
 
-    const { box } = this.chestSprites[index];
-    this.paintChest(box, true);
+    this.setChestTexture(index, true);
     this.floatText(index, gotGem ? '+1₽ +1💎' : '+1₽');
+    this.celebrateFox(index);
 
     const allOpened = this.gameState.data.chests.every((c) => c.opened);
     if (allOpened) {
-      this.time.delayedCall(600, () => this.gameState.resetChestsForNewRound());
-      this.time.delayedCall(650, () => this.scene.restart({
+      this.time.delayedCall(700, () => this.gameState.resetChestsForNewRound());
+      this.time.delayedCall(750, () => this.scene.restart({
         gameState: this.gameState,
         taskBank: this.taskBank,
         taskModal: this.taskModal,
@@ -179,9 +155,34 @@ class IslandScene extends Phaser.Scene {
     this.updateHud();
   }
 
+  celebrateFox(chestIndex) {
+    const { container } = this.chestSprites[chestIndex];
+    const fox = this.add.image(container.x, container.y - 10, 'foxCelebrate');
+    fox.setScale(0.001);
+    fox.setAlpha(0);
+    const targetScale = (70 * this.artScale) / fox.width;
+    this.tweens.add({
+      targets: fox,
+      scale: targetScale,
+      alpha: 1,
+      y: fox.y - 30,
+      duration: 350,
+      ease: 'Back.Out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: fox,
+          alpha: 0,
+          delay: 500,
+          duration: 400,
+          onComplete: () => fox.destroy(),
+        });
+      },
+    });
+  }
+
   floatText(chestIndex, text) {
     const { container } = this.chestSprites[chestIndex];
-    const t = this.add.text(container.x, container.y - 40, text, {
+    const t = this.add.text(container.x, container.y - 60, text, {
       fontSize: '18px',
       color: '#ffd23f',
       fontFamily: 'sans-serif',
@@ -197,13 +198,11 @@ class IslandScene extends Phaser.Scene {
     });
   }
 
-  drawBuildingSlots(cx, cy) {
-    this.buildingSlotPositions = BUILDING_SLOTS.map((tile) =>
-      isoToScreen(tile.gx, tile.gy, cx, cy)
-    );
+  drawBuildingSlots() {
+    this.buildingSlotPositions = BUILDING_SLOTS.map((pos) => this.artToScreen(pos.x, pos.y));
   }
 
-  drawExistingBuildings(cx, cy) {
+  drawExistingBuildings() {
     this.gameState.data.buildings.forEach((b) => {
       this.renderBuilding(b);
     });
@@ -251,33 +250,41 @@ class IslandScene extends Phaser.Scene {
   }
 
   drawPet(cx, cy) {
-    const petsX = cx - 220;
-    const petsY = cy + 120;
+    const petsX = 90;
+    const petsY = this.scale.height - 90;
     const pet = this.gameState.data.pets.find(
       (p) => p.id === this.gameState.data.activePetId
     );
-    if (this.petGraphics) this.petGraphics.destroy();
-    const g = this.add.graphics();
-    g.setPosition(petsX, petsY);
+    if (this.petSprite) this.petSprite.destroy();
+    if (this.petLabel) this.petLabel.destroy();
+    if (this.petPlaceholder) this.petPlaceholder.destroy();
+
     if (!pet) {
+      const g = this.add.graphics();
+      g.setPosition(petsX, petsY);
       g.lineStyle(2, 0xffffff, 0.6);
       g.strokeCircle(0, 0, 20);
-      this.add.text(petsX, petsY + 30, 'Нет питомца', {
+      this.petPlaceholder = g;
+      this.petLabel = this.add.text(petsX, petsY + 32, 'Нет питомца', {
         fontSize: '12px',
         color: '#fff',
+        stroke: '#000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
     } else {
-      const size = pet.stage === 0 ? 16 : pet.stage === 1 ? 24 : 32;
-      const color = pet.stage === 0 ? 0xffe066 : pet.stage === 1 ? 0xffa94d : 0xff6b6b;
-      g.fillStyle(color, 1);
-      g.fillCircle(0, 0, size);
+      const texKey = pet.stage === 0 ? 'petEgg' : pet.stage === 1 ? 'petBaby' : 'petAdult';
+      const targetH = pet.stage === 0 ? 60 : pet.stage === 1 ? 80 : 100;
+      const sprite = this.add.image(petsX, petsY, texKey);
+      sprite.setScale(targetH / sprite.height);
+      this.petSprite = sprite;
       const label = pet.stage === 0 ? 'Яйцо' : pet.stage === 1 ? 'Малыш' : 'Взрослый';
-      this.add.text(petsX, petsY + size + 14, `${pet.species} · ${label}`, {
+      this.petLabel = this.add.text(petsX, petsY + targetH / 2 + 14, label, {
         fontSize: '12px',
         color: '#fff',
+        stroke: '#000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
     }
-    this.petGraphics = g;
   }
 
   updateHud() {
@@ -285,4 +292,4 @@ class IslandScene extends Phaser.Scene {
   }
 }
 
-export { IslandScene, isoToScreen };
+export { IslandScene };
