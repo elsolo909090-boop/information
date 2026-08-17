@@ -12,10 +12,14 @@ const CHEST_ART_POS = [
 ];
 const CHEST_ART_WIDTH = 210;
 
-const BUILDING_SLOTS = [
-  { x: 500, y: 470 },
-  { x: 850, y: 490 },
-];
+// Each slot is one of the 4 empty plots pre-drawn on the island artwork,
+// assigned one-to-one with the 4 building types sold in the shop.
+const BUILDING_SLOTS = {
+  hut: { x: 516, y: 256 },
+  garden: { x: 488, y: 466 },
+  well: { x: 590, y: 522 },
+  tower: { x: 824, y: 514 },
+};
 
 class IslandScene extends Phaser.Scene {
   constructor() {
@@ -37,6 +41,10 @@ class IslandScene extends Phaser.Scene {
     this.load.image('petBaby', 'assets/sprites/pet_baby.png');
     this.load.image('petAdult', 'assets/sprites/pet_adult.png');
     this.load.image('foxCelebrate', 'assets/sprites/fox_celebrate.png');
+    this.load.image('buildingHut', 'assets/sprites/building_hut.png');
+    this.load.image('buildingWell', 'assets/sprites/building_well.png');
+    this.load.image('buildingTower', 'assets/sprites/building_tower.png');
+    this.load.image('buildingGarden', 'assets/sprites/building_garden.png');
   }
 
   create() {
@@ -198,7 +206,10 @@ class IslandScene extends Phaser.Scene {
   }
 
   drawBuildingSlots() {
-    this.buildingSlotPositions = BUILDING_SLOTS.map((pos) => this.artToScreen(pos.x, pos.y));
+    this.buildingSlotPositions = {};
+    Object.entries(BUILDING_SLOTS).forEach(([type, pos]) => {
+      this.buildingSlotPositions[type] = this.artToScreen(pos.x, pos.y);
+    });
   }
 
   drawExistingBuildings() {
@@ -208,26 +219,31 @@ class IslandScene extends Phaser.Scene {
   }
 
   renderBuilding(b) {
-    const g = this.add.graphics();
-    g.setPosition(b.x, b.y);
-    const colors = {
-      hut: 0xc97b3f,
-      tower: 0x8a6bd1,
-      well: 0x6fa8dc,
-      garden: 0x8fc94b,
+    const textureKeys = {
+      hut: 'buildingHut',
+      tower: 'buildingTower',
+      well: 'buildingWell',
+      garden: 'buildingGarden',
     };
-    g.fillStyle(colors[b.type] || 0xcccccc, 1);
-    g.fillRoundedRect(-24, -30, 48, 40, 6);
-    g.fillStyle(0x4a3320, 1);
-    g.fillTriangle(-28, -30, 28, -30, 0, -56);
+    const targetHeights = {
+      hut: 150,
+      tower: 190,
+      well: 130,
+      garden: 110,
+    };
+    const key = textureKeys[b.type];
+    if (!key) return;
+    const sprite = this.add.image(b.x, b.y, key);
+    sprite.setOrigin(0.5, 1);
+    const targetH = (targetHeights[b.type] || 150) * this.artScale;
+    sprite.setScale(targetH / sprite.height);
   }
 
   placeNewBuilding(type, cost) {
-    const slot = this.buildingSlotPositions.find((pos) => {
-      return !this.gameState.data.buildings.some(
-        (b) => Math.abs(b.x - pos.x) < 10 && Math.abs(b.y - pos.y) < 10
-      );
-    }) || this.buildingSlotPositions[0];
+    const alreadyOwned = this.gameState.data.buildings.some((b) => b.type === type);
+    if (alreadyOwned) return null;
+    const slot = this.buildingSlotPositions[type];
+    if (!slot) return null;
     const b = this.gameState.buyBuilding(type, cost, slot.x, slot.y);
     if (b) {
       this.renderBuilding(b);
