@@ -1,5 +1,6 @@
 // Central game state: localStorage persistence, no tracking, no network calls.
 const STORAGE_KEY = 'collectorIsland.save.v1';
+const CHEST_COUNT = 4;
 
 const DEFAULT_STATE = {
   rubles: 0,
@@ -17,7 +18,7 @@ const DEFAULT_STATE = {
 };
 
 function buildDefaultChests() {
-  return [0, 1, 2, 3, 4].map((i) => ({ id: i, opened: false }));
+  return Array.from({ length: CHEST_COUNT }, (_, i) => ({ id: i, opened: false }));
 }
 
 function todayKey(d = new Date()) {
@@ -46,7 +47,11 @@ class GameState {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return structuredClone(DEFAULT_STATE);
       const parsed = JSON.parse(raw);
-      return { ...structuredClone(DEFAULT_STATE), ...parsed };
+      const merged = { ...structuredClone(DEFAULT_STATE), ...parsed };
+      if (!Array.isArray(merged.chests) || merged.chests.length !== CHEST_COUNT) {
+        merged.chests = buildDefaultChests();
+      }
+      return merged;
     } catch (e) {
       console.warn('Save corrupted, resetting', e);
       return structuredClone(DEFAULT_STATE);
@@ -164,14 +169,6 @@ class GameState {
     return b;
   }
 
-  moveBuilding(id, x, y) {
-    const b = this.data.buildings.find((b) => b.id === id);
-    if (b) {
-      b.x = x;
-      b.y = y;
-      this.save();
-    }
-  }
 }
 
 function pickRandom(arr) {

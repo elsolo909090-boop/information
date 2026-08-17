@@ -25,7 +25,7 @@ class ShopPanel {
           <h2>Магазин</h2>
           <p>Питомцы</p>
           <button class="btn btn-shop" id="buyEggBtn">🥚 Купить яйцо питомца <br><small>5💎</small></button>
-          <p>Постройки (перетащи на остров, чтобы переставить)</p>
+          <p>Постройки (занимают отведённое место на острове)</p>
           <div class="shop-grid">${buildingsHtml}</div>
           <button class="btn btn-secondary" id="closeShopBtn">Закрыть</button>
         </div>

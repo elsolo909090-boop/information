@@ -9,7 +9,6 @@ const CHEST_ART_POS = [
   { x: 380, y: 345 }, // left chest
   { x: 980, y: 260 }, // right chest
   { x: 1100, y: 470 }, // bottom-right chest
-  { x: 650, y: 520 }, // empty plot (middle-bottom)
 ];
 const CHEST_ART_WIDTH = 210;
 
@@ -221,18 +220,6 @@ class IslandScene extends Phaser.Scene {
     g.fillRoundedRect(-24, -30, 48, 40, 6);
     g.fillStyle(0x4a3320, 1);
     g.fillTriangle(-28, -30, 28, -30, 0, -56);
-    g.setInteractive(
-      new Phaser.Geom.Rectangle(-28, -56, 56, 86),
-      Phaser.Geom.Rectangle.Contains
-    );
-    this.input.setDraggable(g);
-    g.on('drag', (pointer, dragX, dragY) => {
-      g.x = dragX;
-      g.y = dragY;
-    });
-    g.on('dragend', () => {
-      this.gameState.moveBuilding(b.id, g.x, g.y);
-    });
   }
 
   placeNewBuilding(type, cost) {
