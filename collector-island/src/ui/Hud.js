@@ -10,6 +10,8 @@ class Hud {
       <div class="hud-bar">
         <div class="hud-stat">💵 <span id="hudRubles">0</span> ₽</div>
         <div class="hud-stat">💎 <span id="hudGems">0</span></div>
+        <div class="hud-stat">🥕 <span id="hudFood">0</span></div>
+        <div class="hud-stat">💧 <span id="hudWater">0</span></div>
         <div class="hud-quest">
           <span>Квест дня<span id="hudQuestTheme"></span>:</span>
           <div class="progress-track"><div class="progress-fill" id="hudQuestFill"></div></div>
@@ -24,6 +26,8 @@ class Hud {
     `;
     this.rublesEl = this.root.querySelector('#hudRubles');
     this.gemsEl = this.root.querySelector('#hudGems');
+    this.foodEl = this.root.querySelector('#hudFood');
+    this.waterEl = this.root.querySelector('#hudWater');
     this.questFill = this.root.querySelector('#hudQuestFill');
     this.questLabel = this.root.querySelector('#hudQuestLabel');
     this.questTheme = this.root.querySelector('#hudQuestTheme');
@@ -32,6 +36,8 @@ class Hud {
   update(data) {
     this.rublesEl.textContent = data.rubles;
     this.gemsEl.textContent = data.gems;
+    this.foodEl.textContent = data.food;
+    this.waterEl.textContent = data.water;
     const q = data.dailyQuest;
     const pct = Math.min(100, (q.progress / q.target) * 100);
     this.questFill.style.width = pct + '%';

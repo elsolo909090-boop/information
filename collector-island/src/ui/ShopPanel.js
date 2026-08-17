@@ -1,3 +1,5 @@
+import { PET_SPECIES } from '../state/GameState.js';
+
 const BUILDINGS = [
   { type: 'hut', label: '🏠 Хижина', cost: 3 },
   { type: 'tower', label: '🗼 Башня', cost: 6 },
@@ -15,27 +17,29 @@ class ShopPanel {
   }
 
   _build() {
-    const buildingsHtml = this._buildingsHtml();
-
     this.root.innerHTML = `
       <div class="panel-backdrop hidden" id="shopBackdrop">
         <div class="panel-card">
           <h2>Магазин</h2>
           <p>Питомцы</p>
-          <button class="btn btn-shop" id="buyEggBtn">🥚 Купить яйцо питомца <br><small>5💎</small></button>
-          <p>Постройки (занимают отведённое место на острове)</p>
-          <div class="shop-grid">${buildingsHtml}</div>
+          <div class="shop-grid" id="petsGrid">${this._petsHtml()}</div>
+          <p>Постройки (занимают отведённое место на острове; сад даёт питание питомцам, колодец — воду)</p>
+          <div class="shop-grid" id="buildingsGrid">${this._buildingsHtml()}</div>
           <button class="btn btn-secondary" id="closeShopBtn">Закрыть</button>
         </div>
       </div>
     `;
     this.backdrop = this.root.querySelector('#shopBackdrop');
     this.root.querySelector('#closeShopBtn').addEventListener('click', () => this.close());
-    this.root.querySelector('#buyEggBtn').addEventListener('click', () => {
-      const pet = this.onBuyEgg();
+    this.root.querySelector('#petsGrid').addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-shop[data-species]');
+      if (!btn || btn.disabled) return;
+      const species = btn.dataset.species;
+      const cost = parseInt(btn.dataset.cost, 10);
+      const pet = this.onBuyEgg(species, cost);
       if (!pet) alert('Недостаточно самоцветов 💎');
     });
-    this.root.querySelector('.shop-grid').addEventListener('click', (e) => {
+    this.root.querySelector('#buildingsGrid').addEventListener('click', (e) => {
       const btn = e.target.closest('.btn-shop[data-type]');
       if (!btn || btn.disabled) return;
       const type = btn.dataset.type;
@@ -44,6 +48,12 @@ class ShopPanel {
       if (!ok) alert('Недостаточно самоцветов 💎');
       else this._refreshBuildings();
     });
+  }
+
+  _petsHtml() {
+    return Object.entries(PET_SPECIES).map(([species, s]) => {
+      return `<button class="btn btn-shop" data-species="${species}" data-cost="${s.cost}">${s.label}<br><small>${s.cost}💎</small></button>`;
+    }).join('');
   }
 
   _buildingsHtml() {
@@ -55,7 +65,7 @@ class ShopPanel {
   }
 
   _refreshBuildings() {
-    this.root.querySelector('.shop-grid').innerHTML = this._buildingsHtml();
+    this.root.querySelector('#buildingsGrid').innerHTML = this._buildingsHtml();
   }
 
   open() {

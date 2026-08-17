@@ -2,9 +2,21 @@
 const STORAGE_KEY = 'collectorIsland.save.v1';
 const CHEST_COUNT = 4;
 
+const PET_SPECIES = {
+  fox: { label: '🦊 Лиса', cost: 5 },
+  dog: { label: '🐶 Собака', cost: 5 },
+  mouse: { label: '🐭 Мышь', cost: 4 },
+  red_panda: { label: '🐾 Красная панда', cost: 7 },
+  raccoon: { label: '🦝 Енот', cost: 6 },
+  cat: { label: '🐱 Кошка', cost: 6 },
+  tiger: { label: '🐯 Тигр', cost: 8 },
+};
+
 const DEFAULT_STATE = {
   rubles: 0,
   gems: 0,
+  food: 0,
+  water: 0,
   settings: {
     classes: [1],
     subjects: ['Математика'],
@@ -136,11 +148,12 @@ class GameState {
     this.save();
   }
 
-  buyPetEgg(cost = 5) {
+  buyPetEgg(species, cost) {
+    if (!PET_SPECIES[species]) return null;
     if (!this.spendGems(cost)) return null;
     const pet = {
       id: 'pet_' + Date.now(),
-      species: pickRandom(['fox', 'owl', 'turtle']),
+      species,
       feedCount: 0,
       stage: 0, // 0 egg, 1 baby, 2 grown
       createdAt: Date.now(),
@@ -151,14 +164,26 @@ class GameState {
     return pet;
   }
 
+  // Garden and well passively produce food/water on every solved chest.
+  collectBuildingResources() {
+    if (this.data.buildings.some((b) => b.type === 'garden')) this.data.food += 1;
+    if (this.data.buildings.some((b) => b.type === 'well')) this.data.water += 1;
+  }
+
   feedActivePet() {
     const pet = this.data.pets.find((p) => p.id === this.data.activePetId);
-    if (!pet) return null;
+    if (!pet) return { pet: null, fed: false };
+    if (this.data.food < 1 || this.data.water < 1) {
+      this.save();
+      return { pet, fed: false };
+    }
+    this.data.food -= 1;
+    this.data.water -= 1;
     pet.feedCount += 1;
     if (pet.feedCount >= 8) pet.stage = 2;
     else if (pet.feedCount >= 3) pet.stage = 1;
     this.save();
-    return pet;
+    return { pet, fed: true };
   }
 
   buyBuilding(type, cost, x, y) {
@@ -171,8 +196,4 @@ class GameState {
 
 }
 
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-export { GameState, todayKey };
+export { GameState, todayKey, PET_SPECIES };

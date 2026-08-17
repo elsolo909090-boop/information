@@ -1,3 +1,17 @@
+import { PET_SPECIES } from '../state/GameState.js';
+
+// Maps a pet species to its sprite filename base (empty string = pet_egg.png,
+// pet_baby.png, pet_adult.png with no species suffix, the original fox art).
+const PET_SPRITE_FILES = {
+  fox: '',
+  dog: 'dog',
+  mouse: 'mouse',
+  red_panda: 'redpanda',
+  raccoon: 'raccoon',
+  cat: 'cat',
+  tiger: 'tiger',
+};
+
 // Original-art coordinate space: assets/original/island.png is 1408x768.
 // Chest positions are placed on the pre-drawn chest spots / empty plots in that artwork.
 const ART_W = 1408;
@@ -37,14 +51,17 @@ class IslandScene extends Phaser.Scene {
     this.load.image('island', 'assets/original/island.png');
     this.load.image('chestClosed', 'assets/sprites/chest_closed.png');
     this.load.image('chestOpen', 'assets/sprites/chest_open.png');
-    this.load.image('petEgg', 'assets/sprites/pet_egg.png');
-    this.load.image('petBaby', 'assets/sprites/pet_baby.png');
-    this.load.image('petAdult', 'assets/sprites/pet_adult.png');
     this.load.image('foxCelebrate', 'assets/sprites/fox_celebrate.png');
     this.load.image('buildingHut', 'assets/sprites/building_hut.png');
     this.load.image('buildingWell', 'assets/sprites/building_well.png');
     this.load.image('buildingTower', 'assets/sprites/building_tower.png');
     this.load.image('buildingGarden', 'assets/sprites/building_garden.png');
+    Object.entries(PET_SPRITE_FILES).forEach(([species, fileBase]) => {
+      ['egg', 'baby', 'adult'].forEach((stage) => {
+        const suffix = fileBase ? `${fileBase}_${stage}` : stage;
+        this.load.image(`pet_${species}_${stage}`, `assets/sprites/pet_${suffix}.png`);
+      });
+    });
   }
 
   create() {
@@ -138,14 +155,17 @@ class IslandScene extends Phaser.Scene {
       gotGem = true;
     }
     this.gameState.advanceDailyQuest(task.subject);
+    this.gameState.collectBuildingResources();
+    let fedMessage = '';
     if (this.gameState.data.activePetId) {
-      this.gameState.feedActivePet();
+      const { fed } = this.gameState.feedActivePet();
+      if (fed) fedMessage = ' 🐾';
       this.drawPet(this.center.cx, this.center.cy);
     }
     this.gameState.save();
 
     this.setChestTexture(index, true);
-    this.floatText(index, gotGem ? '+1₽ +1💎' : '+1₽');
+    this.floatText(index, (gotGem ? '+1₽ +1💎' : '+1₽') + fedMessage);
     this.celebrateFox(index);
 
     const allOpened = this.gameState.data.chests.every((c) => c.opened);
@@ -275,7 +295,9 @@ class IslandScene extends Phaser.Scene {
         strokeThickness: 2,
       }).setOrigin(0.5);
     } else {
-      const texKey = pet.stage === 0 ? 'petEgg' : pet.stage === 1 ? 'petBaby' : 'petAdult';
+      const species = PET_SPRITE_FILES[pet.species] !== undefined ? pet.species : 'fox';
+      const stageName = pet.stage === 0 ? 'egg' : pet.stage === 1 ? 'baby' : 'adult';
+      const texKey = `pet_${species}_${stageName}`;
       const targetH = pet.stage === 0 ? 60 : pet.stage === 1 ? 80 : 100;
       const sprite = this.add.image(petsX, petsY, texKey);
       sprite.setScale(targetH / sprite.height);

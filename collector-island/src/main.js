@@ -22,8 +22,8 @@ async function boot() {
       const b = scene.placeNewBuilding(type, cost);
       return !!b;
     },
-    () => {
-      const pet = gameState.buyPetEgg(5);
+    (species, cost) => {
+      const pet = gameState.buyPetEgg(species, cost);
       if (pet) {
         const scene = game.scene.getScene('IslandScene');
         scene.drawPet(scene.center.cx, scene.center.cy);
