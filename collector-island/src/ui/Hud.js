@@ -1,3 +1,5 @@
+import { SUBJECT_LABELS } from '../state/GameState.js';
+
 class Hud {
   constructor(rootEl, gameState) {
     this.root = rootEl;
@@ -42,7 +44,7 @@ class Hud {
     const pct = Math.min(100, (q.progress / q.target) * 100);
     this.questFill.style.width = pct + '%';
     this.questLabel.textContent = `${q.progress}/${q.target}`;
-    this.questTheme.textContent = q.theme ? ` (${q.theme})` : '';
+    this.questTheme.textContent = q.theme ? ` (${SUBJECT_LABELS[q.theme] || q.theme})` : '';
   }
 }
 

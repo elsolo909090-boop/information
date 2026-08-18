@@ -79,7 +79,7 @@ class IslandScene extends Phaser.Scene {
     this.drawExistingBuildings();
     this.drawPet(cx, cy);
 
-    this.taskModal.onResolved = ({ correct, task }) => this.handleResolved(correct, task);
+    this.taskModal.onResolved = ({ earnedMoney, task }) => this.handleResolved(earnedMoney, task);
 
     this.updateHud();
   }
@@ -135,18 +135,22 @@ class IslandScene extends Phaser.Scene {
     this.taskModal.open(task);
   }
 
-  handleResolved(correct, task) {
-    if (!correct) return; // modal only resolves on correct answers
+  // A chest always opens once the task modal resolves — on a correct answer
+  // or after the 2nd wrong attempt (the child is never blocked). Money is
+  // only credited when earnedMoney is true (first-try correct); a gem is
+  // awarded deterministically every 5th first-try-correct answer in a row.
+  handleResolved(earnedMoney, task) {
     const index = this._pendingChestIndex;
     if (index === undefined) return;
 
     this.gameState.openChest(index);
-    this.gameState.recordHistory({ rubles: 1, subject: task.subject });
-    this.gameState.data.rubles += 1;
     let gotGem = false;
-    if (Math.random() < 0.2) {
-      this.gameState.data.gems += 1;
-      gotGem = true;
+    if (earnedMoney) {
+      this.gameState.recordHistory({ rubles: 1, subject: task.subject });
+      this.gameState.data.rubles += 1;
+      gotGem = this.gameState.recordTaskOutcome(true);
+    } else {
+      this.gameState.recordTaskOutcome(false);
     }
     this.gameState.advanceDailyQuest(task.subject);
     this.gameState.collectBuildingResources();
@@ -159,7 +163,8 @@ class IslandScene extends Phaser.Scene {
     this.gameState.save();
 
     this.setChestTexture(index, true);
-    this.floatText(index, (gotGem ? '+1₽ +1💎' : '+1₽') + fedMessage);
+    const rewardText = earnedMoney ? (gotGem ? '+1₽ +1💎' : '+1₽') : 'Сундук открыт';
+    this.floatText(index, rewardText + fedMessage);
     this.celebrateFox(index);
 
     const allOpened = this.gameState.data.chests.every((c) => c.opened);

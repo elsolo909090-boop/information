@@ -1,3 +1,5 @@
+import { SUBJECT_LABELS } from '../state/GameState.js';
+
 class TaskModal {
   constructor(rootEl, taskBank, gameState) {
     this.root = rootEl;
@@ -39,8 +41,9 @@ class TaskModal {
 
   open(task) {
     this.currentTask = task;
+    this.attemptCount = 0;
     this.feedbackEl.textContent = '';
-    this.subjectEl.textContent = `${task.subject} · ${task.class} класс`;
+    this.subjectEl.textContent = `${SUBJECT_LABELS[task.subject] || task.subject} · ${task.class} класс`;
     this.questionEl.textContent = task.question;
     this.optionsEl.innerHTML = '';
 
@@ -70,24 +73,36 @@ class TaskModal {
     this.currentTask = null;
   }
 
+  // Max 2 attempts per task. Money is only awarded for a first-try correct
+  // answer; a task always resolves (chest opens) after either a correct
+  // answer or a second miss — the child is never blocked from progressing.
   _checkAnswer(given) {
     const task = this.currentTask;
     if (!task) return;
-    const correct =
-      normalize(given) === normalize(task.answer);
+    this.attemptCount += 1;
+    const correct = normalize(given) === normalize(task.answer);
 
     if (correct) {
-      this.feedbackEl.textContent = '✅ Верно!';
+      const earnedMoney = this.attemptCount === 1;
+      this.feedbackEl.textContent = earnedMoney ? '✅ Верно!' : '✅ Верно (без награды за 1-ю попытку)';
       this.feedbackEl.className = 'modal-feedback ok';
-      const result = { correct: true, task };
+      const result = { correct: true, earnedMoney, task };
       setTimeout(() => {
         this.close();
         if (this.onResolved) this.onResolved(result);
       }, 500);
+    } else if (this.attemptCount >= 2) {
+      this.feedbackEl.textContent = `❌ Неверно. Правильный ответ: ${task.answer}`;
+      this.feedbackEl.className = 'modal-feedback bad';
+      const result = { correct: false, earnedMoney: false, task };
+      setTimeout(() => {
+        this.close();
+        if (this.onResolved) this.onResolved(result);
+      }, 900);
     } else {
       this.feedbackEl.textContent = `❌ Неверно. ${this.taskBank.hint(task)}`;
       this.feedbackEl.className = 'modal-feedback bad';
-      // No penalty: player may retry the same chest immediately.
+      // One free retry left, no penalty yet.
     }
   }
 }

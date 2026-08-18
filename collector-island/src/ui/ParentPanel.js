@@ -1,3 +1,5 @@
+import { SUBJECT_LABELS } from '../state/GameState.js';
+
 class ParentPanel {
   constructor(rootEl, gameState) {
     this.root = rootEl;
@@ -76,7 +78,7 @@ class ParentPanel {
       <p>Всего накоплено: <strong>${rubles} ₽</strong></p>
       <p>Разбивка по предметам (верных ответов):</p>
       <ul>${Object.entries(bySubjectTotal)
-        .map(([s, c]) => `<li>${s}: ${c}</li>`)
+        .map(([s, c]) => `<li>${SUBJECT_LABELS[s] || s}: ${c}</li>`)
         .join('') || '<li>Пока нет данных</li>'}</ul>
     `;
 

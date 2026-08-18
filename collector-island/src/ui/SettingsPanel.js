@@ -1,5 +1,11 @@
-const CLASSES = [1, 2, 3, 4];
-const SUBJECTS = ['Математика', 'Русский язык', 'Окружающий мир'];
+const CLASSES = [5];
+const SUBJECTS = [
+  { key: 'math', label: 'Математика' },
+  { key: 'russian', label: 'Русский язык' },
+  { key: 'logic', label: 'Логика' },
+  { key: 'riddle', label: 'Загадки' },
+  { key: 'general_knowledge', label: 'Общие знания' },
+];
 
 class SettingsPanel {
   constructor(rootEl, gameState, onChange) {
@@ -19,9 +25,9 @@ class SettingsPanel {
     ).join('');
 
     const subjectsHtml = SUBJECTS.map(
-      (s) => `<label class="check-item"><input type="checkbox" value="${s}" ${
-        subjects.includes(s) ? 'checked' : ''
-      } class="subjectCheckbox" />${s}</label>`
+      (s) => `<label class="check-item"><input type="checkbox" value="${s.key}" ${
+        subjects.includes(s.key) ? 'checked' : ''
+      } class="subjectCheckbox" />${s.label}</label>`
     ).join('');
 
     this.root.innerHTML = `

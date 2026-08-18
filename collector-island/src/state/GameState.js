@@ -2,6 +2,16 @@
 const STORAGE_KEY = 'collectorIsland.save.v1';
 const CHEST_COUNT = 4;
 
+const SUBJECT_LABELS = {
+  math: 'Математика',
+  russian: 'Русский язык',
+  logic: 'Логика',
+  riddle: 'Загадки',
+  general_knowledge: 'Общие знания',
+};
+const VALID_CLASSES = [5];
+const VALID_SUBJECTS = Object.keys(SUBJECT_LABELS);
+
 const PET_SPECIES = {
   fox: { label: '🦊 Лиса', cost: 5 },
   dog: { label: '🐶 Собака', cost: 5 },
@@ -17,9 +27,10 @@ const DEFAULT_STATE = {
   gems: 0,
   food: 0,
   water: 0,
+  correctStreakForGem: 0,
   settings: {
-    classes: [1],
-    subjects: ['Математика'],
+    classes: [5],
+    subjects: ['math'],
   },
   chests: buildDefaultChests(),
   dailyQuest: makeDailyQuest(),
@@ -63,6 +74,12 @@ class GameState {
       if (!Array.isArray(merged.chests) || merged.chests.length !== CHEST_COUNT) {
         merged.chests = buildDefaultChests();
       }
+      // Stale saves may carry settings from an older task bank (different
+      // class/subject keys) that no longer match anything in tasks.json.
+      const validClasses = (merged.settings.classes || []).filter((c) => VALID_CLASSES.includes(c));
+      const validSubjects = (merged.settings.subjects || []).filter((s) => VALID_SUBJECTS.includes(s));
+      merged.settings.classes = validClasses.length ? validClasses : [...DEFAULT_STATE.settings.classes];
+      merged.settings.subjects = validSubjects.length ? validSubjects : [...DEFAULT_STATE.settings.subjects];
       return merged;
     } catch (e) {
       console.warn('Save corrupted, resetting', e);
@@ -127,6 +144,23 @@ class GameState {
     const chest = this.data.chests.find((c) => c.id === id);
     if (chest) chest.opened = true;
     this.save();
+  }
+
+  // Deterministic gem reward: every 5th first-try-correct answer in a row
+  // gives 1 gem (no randomness, per the economy spec). A miss/late-correct
+  // answer breaks the streak.
+  recordTaskOutcome(earnedMoney) {
+    if (!earnedMoney) {
+      this.data.correctStreakForGem = 0;
+      return false;
+    }
+    this.data.correctStreakForGem = (this.data.correctStreakForGem || 0) + 1;
+    if (this.data.correctStreakForGem >= 5) {
+      this.data.correctStreakForGem = 0;
+      this.data.gems += 1;
+      return true;
+    }
+    return false;
   }
 
   resetChestsForNewRound() {
@@ -196,4 +230,4 @@ class GameState {
 
 }
 
-export { GameState, todayKey, PET_SPECIES };
+export { GameState, todayKey, PET_SPECIES, SUBJECT_LABELS };
