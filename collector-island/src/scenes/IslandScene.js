@@ -24,7 +24,7 @@ const CHEST_ART_POS = [
   { x: 980, y: 260 }, // right chest
   { x: 1100, y: 470 }, // bottom-right chest
 ];
-const CHEST_ART_WIDTH = 210;
+const CHEST_ART_WIDTH = 130;
 
 // Each slot is one of the 4 empty plots pre-drawn on the island artwork,
 // assigned one-to-one with the 4 building types sold in the shop.
@@ -49,7 +49,9 @@ class IslandScene extends Phaser.Scene {
 
   preload() {
     this.load.image('island', 'assets/original/island.png');
-    this.load.image('chestClosed', 'assets/sprites/chest_closed.png');
+    for (let i = 1; i <= CHEST_ART_POS.length; i++) {
+      this.load.image(`chestClosed${i}`, `assets/sprites/chest_closed_${i}.png`);
+    }
     this.load.image('chestOpen', 'assets/sprites/chest_open.png');
     this.load.image('foxCelebrate', 'assets/sprites/fox_celebrate.png');
     this.load.image('buildingHut', 'assets/sprites/building_hut.png');
@@ -105,19 +107,11 @@ class IslandScene extends Phaser.Scene {
       const container = this.add.container(p.x, p.y);
 
       const displayW = CHEST_ART_WIDTH * this.artScale;
-      const sprite = this.add.image(0, 0, chestState.opened ? 'chestOpen' : 'chestClosed');
+      const sprite = this.add.image(0, 0, chestState.opened ? 'chestOpen' : `chestClosed${i + 1}`);
       const scaleFactor = displayW / sprite.width;
       sprite.setScale(scaleFactor);
 
-      const label = this.add.text(0, -displayW * 0.55, `#${i + 1}`, {
-        fontSize: '13px',
-        color: '#3b2a1a',
-        fontFamily: 'sans-serif',
-        backgroundColor: '#ffe9a8',
-        padding: { x: 4, y: 2 },
-      }).setOrigin(0.5);
-
-      container.add([sprite, label]);
+      container.add([sprite]);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on('pointerdown', () => this.onChestTap(i));
 
@@ -127,7 +121,7 @@ class IslandScene extends Phaser.Scene {
 
   setChestTexture(index, opened) {
     const { sprite, displayW } = this.chestSprites[index];
-    sprite.setTexture(opened ? 'chestOpen' : 'chestClosed');
+    sprite.setTexture(opened ? 'chestOpen' : `chestClosed${index + 1}`);
     sprite.setScale(displayW / sprite.width);
   }
 
