@@ -24,7 +24,7 @@ const CHEST_ART_POS = [
   { x: 980, y: 260 }, // right chest
   { x: 1100, y: 470 }, // bottom-right chest
 ];
-const CHEST_ART_WIDTH = 130;
+const CHEST_ART_WIDTH = 190;
 
 // Each slot is one of the 4 empty plots pre-drawn on the island artwork,
 // assigned one-to-one with the 4 building types sold in the shop.
